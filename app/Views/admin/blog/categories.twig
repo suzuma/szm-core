@@ -1,0 +1,343 @@
+{% extends 'layouts/app.twig' %}
+
+{% block title %}Categorías — {{ app_name }}{% endblock %}
+{% block page_title %}Categorías del Blog{% endblock %}
+
+{% block breadcrumbs %}
+<nav class="breadcrumbs" aria-label="Ruta de navegación">
+    <ol>
+        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="/admin/blog">Blog</a></li>
+        <li class="breadcrumb-item breadcrumb-active">Categorías</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block head %}
+<style>
+.cat-table { width:100%; border-collapse:collapse; }
+.cat-table th { background:var(--bg); color:var(--muted); font-size:.7rem; font-weight:700;
+    text-transform:uppercase; letter-spacing:.05em; padding:.625rem 1rem; text-align:left;
+    border-bottom:1px solid var(--border); }
+.cat-table td { padding:.75rem 1rem; border-bottom:1px solid var(--border); font-size:.875rem; vertical-align:middle; }
+.cat-table tbody tr:last-child td { border-bottom:none; }
+.cat-table tbody tr:hover { background:var(--bg); }
+
+.btn-xs { display:inline-flex; align-items:center; gap:.25rem; padding:.3rem .65rem;
+    border-radius:6px; font-size:.75rem; font-weight:600; border:none; cursor:pointer;
+    text-decoration:none; transition:background .15s; }
+.btn-xs-edit   { background:#dbeafe; color:#1d4ed8; }
+.btn-xs-edit:hover { background:#bfdbfe; }
+.btn-xs-del    { background:#fee2e2; color:#dc2626; }
+.btn-xs-del:hover { background:#fecaca; }
+.btn-xs-toggle { background:#f1f5f9; color:#475569; }
+.btn-xs-toggle:hover { background:#e2e8f0; }
+
+/* Modal */
+.cat-modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.45);
+    display:flex; align-items:center; justify-content:center; z-index:900;
+    opacity:0; pointer-events:none; transition:opacity .2s; }
+.cat-modal-backdrop.open { opacity:1; pointer-events:all; }
+.cat-modal { background:#fff; border-radius:12px; width:100%; max-width:480px;
+    box-shadow:0 8px 32px rgba(0,0,0,.18); padding:1.75rem; }
+.cat-modal h2 { margin:0 0 1.25rem; font-size:1.1rem; color:var(--navy); }
+.field-group { margin-bottom:1rem; }
+.field-group label { display:block; font-size:.78rem; font-weight:600; color:var(--muted); margin-bottom:.3rem; }
+.field-group input,
+.field-group select,
+.field-group textarea { width:100%; padding:.5rem .75rem; border:1px solid var(--border);
+    border-radius:8px; font-size:.875rem; font-family:inherit; outline:none; box-sizing:border-box; }
+.field-group input:focus,
+.field-group select:focus,
+.field-group textarea:focus { border-color:var(--sky); box-shadow:0 0 0 3px rgba(0,191,255,.15); }
+.field-group textarea { resize:vertical; min-height:80px; }
+.modal-actions { display:flex; justify-content:flex-end; gap:.625rem; margin-top:1.25rem; }
+
+.badge-active   { background:#f0fdf4; color:#15803d; padding:.2rem .6rem; border-radius:9999px; font-size:.72rem; font-weight:700; }
+.badge-inactive { background:#f1f5f9; color:#64748b; padding:.2rem .6rem; border-radius:9999px; font-size:.72rem; font-weight:700; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ── Header ──────────────────────────────────────────────────────────────── #}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;gap:1rem;flex-wrap:wrap">
+    <p style="color:var(--muted);font-size:.875rem">{{ categories|length }} categoría{{ categories|length != 1 ? 's' : '' }}</p>
+    <button type="button" class="btn" style="width:auto;padding:.6rem 1.25rem" id="btnNewCat">
+        ＋ Nueva categoría
+    </button>
+</div>
+
+{# ── Tabla ────────────────────────────────────────────────────────────────── #}
+{% if categories is empty %}
+<div class="card" style="text-align:center;padding:3rem 1rem;color:var(--muted)">
+    No hay categorías. <button type="button" id="btnNewCatEmpty" style="background:none;border:none;color:var(--sky-dk);cursor:pointer;font-size:inherit;padding:0">Crear la primera</button>.
+</div>
+{% else %}
+<div class="card" style="padding:0;overflow:hidden">
+    <div style="overflow-x:auto">
+        <table class="cat-table" aria-label="Lista de categorías">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Slug</th>
+                    <th>Padre</th>
+                    <th style="text-align:center">Orden</th>
+                    <th style="text-align:center">Posts pub.</th>
+                    <th style="text-align:center">Estado</th>
+                    <th style="text-align:right">Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="cat-tbody">
+                {% for cat in categories %}
+                <tr id="cat-row-{{ cat.id }}" data-id="{{ cat.id }}">
+                    <td style="font-weight:600;color:var(--navy)">{{ cat.name }}</td>
+                    <td style="font-size:.8rem;color:var(--muted)">/{{ cat.slug }}</td>
+                    <td style="font-size:.8rem;color:var(--muted)">{{ cat.parent ? cat.parent.name : '—' }}</td>
+                    <td style="text-align:center;color:var(--muted);font-size:.8125rem">{{ cat.sort_order }}</td>
+                    <td style="text-align:center;color:var(--muted);font-size:.8125rem">{{ cat.posts_count }}</td>
+                    <td style="text-align:center">
+                        <span class="{{ cat.active ? 'badge-active' : 'badge-inactive' }}">
+                            {{ cat.active ? 'Activa' : 'Inactiva' }}
+                        </span>
+                    </td>
+                    <td>
+                        <div style="display:flex;align-items:center;justify-content:flex-end;gap:.375rem">
+                            <button type="button" class="btn-xs btn-xs-edit"
+                                    data-action="edit"
+                                    data-id="{{ cat.id }}"
+                                    data-name="{{ cat.name|e('html_attr') }}"
+                                    data-description="{{ cat.description|default('')|e('html_attr') }}"
+                                    data-parent="{{ cat.parent_id|default('') }}"
+                                    data-sort="{{ cat.sort_order }}"
+                                    aria-label="Editar {{ cat.name }}">
+                                Editar
+                            </button>
+                            <button type="button" class="btn-xs btn-xs-toggle"
+                                    data-action="toggle"
+                                    data-id="{{ cat.id }}"
+                                    data-active="{{ cat.active ? '1' : '0' }}"
+                                    aria-label="{{ cat.active ? 'Desactivar' : 'Activar' }} {{ cat.name }}">
+                                {{ cat.active ? 'Desactivar' : 'Activar' }}
+                            </button>
+                            <button type="button" class="btn-xs btn-xs-del"
+                                    data-action="delete"
+                                    data-id="{{ cat.id }}"
+                                    data-name="{{ cat.name|e('html_attr') }}"
+                                    aria-label="Eliminar {{ cat.name }}">
+                                Eliminar
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{# ── Toast ────────────────────────────────────────────────────────────────── #}
+<div id="toast-area" class="u-toast-wrap" aria-live="polite"></div>
+
+{# ── Modal crear / editar ─────────────────────────────────────────────────── #}
+<div class="cat-modal-backdrop" id="catModal" role="dialog" aria-modal="true" aria-labelledby="catModalTitle">
+    <div class="cat-modal">
+        <h2 id="catModalTitle">Nueva categoría</h2>
+        <form id="catForm" novalidate>
+            <input type="hidden" id="fm-id" value="">
+
+            <div class="field-group">
+                <label for="fm-name">Nombre <span style="color:#dc2626">*</span></label>
+                <input type="text" id="fm-name" name="name" maxlength="150" autocomplete="off" required>
+            </div>
+
+            <div class="field-group">
+                <label for="fm-description">Descripción</label>
+                <textarea id="fm-description" name="description" rows="2"></textarea>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+                <div class="field-group" style="margin-bottom:0">
+                    <label for="fm-parent">Categoría padre</label>
+                    <select id="fm-parent" name="parent_id">
+                        <option value="">— Ninguna —</option>
+                        {% for c in all_categories %}
+                        <option value="{{ c.id }}">{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field-group" style="margin-bottom:0">
+                    <label for="fm-sort">Orden</label>
+                    <input type="number" id="fm-sort" name="sort_order" value="0" min="0" max="999">
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-outline" id="btnCancelCat"
+                        style="padding:.5rem 1rem">Cancelar</button>
+                <button type="submit" class="btn" id="btnSaveCat"
+                        style="width:auto;padding:.5rem 1.25rem">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const CSRF = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+
+/* ── Toast ────────────────────────────────────────────────────────────────── */
+function toast(msg, type = 'success') {
+    const area = document.getElementById('toast-area');
+    if (!area) return;
+    const el = document.createElement('div');
+    el.className = `u-toast ${type}`;
+    el.textContent = msg;
+    area.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+}
+
+/* ── Modal ────────────────────────────────────────────────────────────────── */
+const modal     = document.getElementById('catModal');
+const form      = document.getElementById('catForm');
+const titleEl   = document.getElementById('catModalTitle');
+const fmId      = document.getElementById('fm-id');
+const fmName    = document.getElementById('fm-name');
+const fmDesc    = document.getElementById('fm-description');
+const fmParent  = document.getElementById('fm-parent');
+const fmSort    = document.getElementById('fm-sort');
+
+function openModal(mode, data = {}) {
+    titleEl.textContent = mode === 'edit' ? 'Editar categoría' : 'Nueva categoría';
+    fmId.value          = data.id ?? '';
+    fmName.value        = data.name ?? '';
+    fmDesc.value        = data.description ?? '';
+    fmParent.value      = data.parent ?? '';
+    fmSort.value        = data.sort ?? 0;
+    modal.classList.add('open');
+    setTimeout(() => fmName.focus(), 50);
+}
+
+function closeModal() {
+    modal.classList.remove('open');
+    form.reset();
+    fmId.value = '';
+}
+
+document.getElementById('btnNewCat')?.addEventListener('click', () => openModal('create'));
+document.getElementById('btnNewCatEmpty')?.addEventListener('click', () => openModal('create'));
+document.getElementById('btnCancelCat').addEventListener('click', closeModal);
+modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+/* ── Guardar (crear / actualizar) ─────────────────────────────────────────── */
+form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const id      = fmId.value;
+    const isEdit  = id !== '';
+    const url     = isEdit ? `/admin/blog/categories/${id}` : '/admin/blog/categories';
+    const btn     = document.getElementById('btnSaveCat');
+
+    const fd = new FormData();
+    fd.append('_token',      CSRF);
+    fd.append('name',        fmName.value.trim());
+    fd.append('description', fmDesc.value.trim());
+    fd.append('parent_id',   fmParent.value);
+    fd.append('sort_order',  fmSort.value);
+    if (isEdit) fd.append('_method', 'PUT');
+
+    btn.disabled = true;
+    try {
+        const res  = await fetch(url, { method: 'POST', body: fd });
+        const json = await res.json();
+        if (!json.ok) { toast(json.error ?? 'Error al guardar.', 'error'); return; }
+
+        if (isEdit) {
+            const row   = document.getElementById(`cat-row-${id}`);
+            const cells = row?.querySelectorAll('td');
+            if (cells) {
+                cells[0].textContent = json.category.name;
+                cells[1].textContent = '/' + json.category.slug;
+                cells[4].textContent = json.category.sort_order;
+            }
+            toast('Categoría actualizada.');
+        } else {
+            // Recargar para mostrar la nueva fila con todos los datos
+            window.location.reload();
+        }
+        closeModal();
+    } catch { toast('Error de red.', 'error'); }
+    finally { btn.disabled = false; }
+});
+
+/* ── Delegación de acciones (editar / toggle / eliminar) ──────────────────── */
+document.addEventListener('click', async e => {
+    const btn    = e.target.closest('[data-action]');
+    if (!btn) return;
+
+    const action = btn.dataset.action;
+    const id     = btn.dataset.id;
+
+    /* Editar */
+    if (action === 'edit') {
+        openModal('edit', {
+            id:          id,
+            name:        btn.dataset.name,
+            description: btn.dataset.description,
+            parent:      btn.dataset.parent,
+            sort:        btn.dataset.sort,
+        });
+        return;
+    }
+
+    /* Toggle activo */
+    if (action === 'toggle') {
+        btn.disabled = true;
+        try {
+            const fd = new FormData();
+            fd.append('_token',  CSRF);
+            fd.append('_method', 'PATCH');
+            const res  = await fetch(`/admin/blog/categories/${id}/toggle`, { method: 'POST', body: fd });
+            const json = await res.json();
+            if (json.ok) {
+                const row   = document.getElementById(`cat-row-${id}`);
+                const badge = row?.querySelector('.badge-active, .badge-inactive');
+                if (badge) {
+                    badge.className   = json.active ? 'badge-active' : 'badge-inactive';
+                    badge.textContent = json.active ? 'Activa' : 'Inactiva';
+                }
+                btn.textContent   = json.active ? 'Desactivar' : 'Activar';
+                btn.dataset.active = json.active ? '1' : '0';
+                toast(json.active ? 'Categoría activada.' : 'Categoría desactivada.');
+            }
+        } catch { toast('Error de red.', 'error'); }
+        finally { btn.disabled = false; }
+    }
+
+    /* Eliminar */
+    if (action === 'delete') {
+        if (!confirm(`¿Eliminar la categoría "${btn.dataset.name}"? No se puede deshacer.`)) return;
+        btn.disabled = true;
+        try {
+            const fd = new FormData();
+            fd.append('_token',  CSRF);
+            fd.append('_method', 'DELETE');
+            const res  = await fetch(`/admin/blog/categories/${id}`, { method: 'POST', body: fd });
+            const json = await res.json();
+            if (json.ok) {
+                const row = document.getElementById(`cat-row-${id}`);
+                row && (row.style.transition = 'opacity .3s', row.style.opacity = '0',
+                        setTimeout(() => row.remove(), 320));
+                toast('Categoría eliminada.');
+            } else {
+                toast(json.error ?? 'No se pudo eliminar.', 'error');
+            }
+        } catch { toast('Error de red.', 'error'); }
+        finally { btn.disabled = false; }
+    }
+});
+</script>
+{% endblock %}

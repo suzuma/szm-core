@@ -1,0 +1,670 @@
+{% extends 'layouts/app.twig' %}
+
+{% set is_edit = post is not null %}
+{% block title %}{{ is_edit ? 'Editar: ' ~ post.title : 'Nuevo artículo' }} — {{ app_name }}{% endblock %}
+{% block page_title %}{{ is_edit ? 'Editar artículo' : 'Nuevo artículo' }}{% endblock %}
+
+{% block breadcrumbs %}
+<nav class="breadcrumbs" aria-label="Ruta de navegación">
+    <ol>
+        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="/admin/blog">Blog</a></li>
+        <li class="breadcrumb-item breadcrumb-active">{{ is_edit ? 'Editar' : 'Nuevo' }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block head %}
+{# ── Editor.js core + plugins ─────────────────────────────────────────── #}
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@latest/dist/editorjs.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/header@latest/dist/header.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/list@latest/dist/list.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/image@latest/dist/image.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/quote@latest/dist/quote.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/code@latest/dist/code.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/embed@latest/dist/embed.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/table@latest/dist/table.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/delimiter@latest/dist/delimiter.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/inline-code@latest/dist/inline-code.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/raw@latest/dist/raw.umd.js"></script>
+
+<style>
+.form-grid { display:grid; grid-template-columns:1fr 300px; gap:1.5rem; align-items:start; }
+.form-section { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:1.5rem; box-shadow:var(--shadow); }
+.form-section + .form-section { margin-top:1.25rem; }
+.form-section__title { font-size:.75rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--muted); margin-bottom:1rem; }
+.f-label { display:block; font-size:.8125rem; font-weight:600; margin-bottom:.35rem; color:var(--fg,#1e293b); }
+.f-input { width:100%; padding:.6rem .875rem; border:1px solid var(--border); border-radius:.5rem;
+    font-size:.875rem; outline:none; transition:border-color .15s, box-shadow .15s;
+    background:#fff; font-family:inherit; color:var(--navy); }
+.f-input:focus { border-color:var(--sky); box-shadow:0 0 0 3px rgba(0,191,255,.15); }
+.f-error { color:#ef4444; font-size:.75rem; margin-top:.3rem; }
+.f-hint  { color:var(--muted); font-size:.75rem; margin-top:.3rem; }
+
+/* Slug preview */
+.slug-preview { font-size:.75rem; color:var(--muted); margin-top:.3rem;
+    word-break:break-all; font-family:monospace; }
+.slug-preview strong { color:var(--sky-dk); }
+
+/* Featured image */
+#img-preview { max-width:100%; border-radius:8px; margin-top:.75rem;
+    border:1px solid var(--border); display:none; }
+#img-preview.show { display:block; }
+
+/* Tag input */
+.tag-input-wrap { position:relative; }
+.tag-pills { display:flex; flex-wrap:wrap; gap:.375rem; margin-bottom:.5rem; }
+.tag-pill { display:inline-flex; align-items:center; gap:.3rem; background:var(--sky-lt);
+    color:var(--navy-lt); border-radius:9999px; padding:.2rem .65rem; font-size:.75rem; font-weight:600; }
+.tag-pill button { background:none; border:none; cursor:pointer; color:inherit; line-height:1;
+    padding:0 0 0 .1rem; font-size:.9em; }
+
+/* Character counters */
+.char-counter { font-size:.72rem; color:var(--muted); text-align:right; margin-top:.2rem; }
+.char-counter.warn { color:#f59e0b; }
+.char-counter.over { color:#ef4444; }
+
+/* Editor.js container */
+#editorjs-holder {
+    min-height: 400px;
+    border: 1px solid var(--border);
+    border-radius: .5rem;
+    padding: .5rem;
+    background: #fff;
+}
+.codex-editor__redactor { padding-bottom: 2rem !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<form method="POST"
+      action="{{ is_edit ? '/admin/blog/' ~ post.id : '/admin/blog' }}"
+      id="post-form"
+      enctype="multipart/form-data"
+      novalidate>
+
+    {{ csrf_field()|raw }}
+    {% if is_edit %}<input type="hidden" name="_method" value="PUT">{% endif %}
+    {# featured_image path — filled by JS after upload #}
+    <input type="hidden" name="featured_image" id="fi-path"
+           value="{{ is_edit ? post.featured_image : (old.featured_image ?? '') }}">
+    {# content — filled by Editor.js serialization on submit #}
+    <input type="hidden" name="content" id="f-content">
+
+    <div class="form-grid">
+
+        {# ── Columna principal ──────────────────────────────────────── #}
+        <div>
+
+            {# Título + Slug #}
+            <div class="form-section">
+                <div style="margin-bottom:1rem">
+                    <label for="f-title" class="f-label">
+                        Título <span style="color:#ef4444" aria-hidden="true">*</span>
+                    </label>
+                    <input id="f-title" name="title" type="text" class="f-input"
+                           value="{{ is_edit ? post.title : (old.title ?? '') }}"
+                           maxlength="255" required autocomplete="off"
+                           placeholder="Escribe un título atractivo…">
+                    {% if errors.title is defined %}
+                    <p class="f-error" role="alert">{{ errors.title }}</p>
+                    {% endif %}
+                    <div class="char-counter" id="title-counter">0 / 255</div>
+                </div>
+
+                <div>
+                    <label class="f-label">Slug (URL)</label>
+                    <div style="display:flex;gap:.5rem;align-items:center">
+                        <input id="f-slug" name="slug" type="text" class="f-input"
+                               value="{{ is_edit ? post.slug : (old.slug ?? '') }}"
+                               maxlength="280" autocomplete="off"
+                               placeholder="se-genera-automáticamente"
+                               style="font-family:monospace;font-size:.8125rem">
+                        <button type="button" id="btn-gen-slug" class="btn-outline"
+                                style="white-space:nowrap;padding:.55rem .875rem;font-size:.8rem">
+                            Regenerar
+                        </button>
+                    </div>
+                    <p class="slug-preview" id="slug-preview">
+                        /blog/<strong id="slug-display">{{ is_edit ? post.slug : '' }}</strong>
+                    </p>
+                </div>
+            </div>
+
+            {# Editor de contenido — Editor.js #}
+            <div class="form-section">
+                <p class="form-section__title">Contenido</p>
+                <div id="editorjs-holder"></div>
+                {% if errors.content is defined %}
+                <p class="f-error" role="alert">{{ errors.content }}</p>
+                {% endif %}
+            </div>
+
+            {# Extracto #}
+            <div class="form-section">
+                <p class="form-section__title">Extracto</p>
+                <textarea id="f-excerpt" name="excerpt" rows="3" class="f-input"
+                          maxlength="500"
+                          placeholder="Resumen breve (se auto-genera si se deja vacío)…">{{ is_edit ? post.excerpt : (old.excerpt ?? '') }}</textarea>
+                <div class="char-counter" id="excerpt-counter">0 / 500</div>
+            </div>
+
+            {# SEO #}
+            <div class="form-section">
+                <p class="form-section__title">SEO</p>
+                <div style="margin-bottom:1rem">
+                    <label for="f-meta-title" class="f-label">Meta título</label>
+                    <input id="f-meta-title" name="meta_title" type="text" class="f-input"
+                           value="{{ is_edit ? post.meta_title : (old.meta_title ?? '') }}"
+                           maxlength="70"
+                           placeholder="Si se deja vacío se usa el título del artículo">
+                    <div class="char-counter" id="meta-title-counter">0 / 70</div>
+                </div>
+                <div>
+                    <label for="f-meta-desc" class="f-label">Meta descripción</label>
+                    <textarea id="f-meta-desc" name="meta_description" rows="2" class="f-input"
+                              maxlength="165"
+                              placeholder="Descripción para Google (max 165 chars)…">{{ is_edit ? post.meta_description : (old.meta_description ?? '') }}</textarea>
+                    <div class="char-counter" id="meta-desc-counter">0 / 165</div>
+                </div>
+            </div>
+
+        </div>
+
+        {# ── Columna lateral ────────────────────────────────────────── #}
+        <div>
+
+            {# Publicación #}
+            <div class="form-section">
+                <p class="form-section__title">Publicación</p>
+
+                <div style="margin-bottom:1rem">
+                    <label for="f-status" class="f-label">Estado <span style="color:#ef4444" aria-hidden="true">*</span></label>
+                    <select id="f-status" name="status" class="f-input">
+                        <option value="draft"     {{ (is_edit ? post.status : (old.status ?? 'draft')) == 'draft'     ? 'selected' : '' }}>Borrador</option>
+                        <option value="published" {{ (is_edit ? post.status : (old.status ?? 'draft')) == 'published' ? 'selected' : '' }}>Publicado</option>
+                        <option value="scheduled" {{ (is_edit ? post.status : (old.status ?? 'draft')) == 'scheduled' ? 'selected' : '' }}>Programado</option>
+                    </select>
+                </div>
+
+                <div id="scheduled-date-wrap" style="display:none;margin-bottom:1rem">
+                    <label for="f-published-at" class="f-label">Fecha y hora de publicación</label>
+                    <input id="f-published-at" name="published_at" type="datetime-local" class="f-input"
+                           value="{{ is_edit and post.published_at ? post.published_at|date('Y-m-d\\TH:i') : '' }}">
+                </div>
+
+                <div style="display:flex;gap:.625rem">
+                    <button type="submit" name="action_save" value="save" class="btn"
+                            style="flex:1;padding:.65rem">
+                        {{ is_edit ? 'Guardar cambios' : 'Crear artículo' }}
+                    </button>
+                    <a href="/admin/blog" class="btn-outline"
+                       style="padding:.6rem 1rem;text-decoration:none;text-align:center">
+                        Cancelar
+                    </a>
+                </div>
+            </div>
+
+            {# Categoría #}
+            <div class="form-section">
+                <p class="form-section__title">Categoría</p>
+                <select name="category_id" class="f-input">
+                    <option value="">Sin categoría</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}"
+                        {{ (is_edit ? post.category_id : (old.category_id ?? '')) == cat.id ? 'selected' : '' }}>
+                        {{ cat.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {# Tags #}
+            <div class="form-section">
+                <p class="form-section__title">Etiquetas</p>
+                <div class="tag-pills" id="tag-pills"></div>
+                <input type="hidden" name="tags" id="f-tags"
+                       value="{{ is_edit ? post.tags|map(t => t.name)|join(',') : (old.tags ?? '') }}">
+                <input type="text" id="tag-input" class="f-input" placeholder="Añadir etiqueta…"
+                       autocomplete="off" style="margin-top:.5rem">
+                <p class="f-hint">Escribe y presiona Enter o coma para añadir.</p>
+
+                {% if tags is not empty %}
+                <div style="margin-top:.625rem">
+                    <p style="font-size:.72rem;color:var(--muted);font-weight:600;margin-bottom:.375rem">Sugerencias:</p>
+                    <div style="display:flex;flex-wrap:wrap;gap:.375rem" id="tag-suggestions">
+                        {% for tag in tags|slice(0,20) %}
+                        <button type="button" class="blog-tag"
+                                style="cursor:pointer;border:none"
+                                data-tag="{{ tag.name|e('html_attr') }}">
+                            #{{ tag.name }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            {# Imagen destacada #}
+            <div class="form-section">
+                <p class="form-section__title">Imagen destacada</p>
+                <input type="file" id="f-img-file" accept="image/jpeg,image/png,image/webp"
+                       style="font-size:.8rem;width:100%">
+                <div id="img-upload-progress" style="display:none;margin-top:.5rem;font-size:.8rem;color:var(--muted)">
+                    Subiendo…
+                </div>
+                <img id="img-preview"
+                     src="{{ is_edit and post.featured_image ? asset(post.featured_image) : '' }}"
+                     alt="Vista previa" class="{{ is_edit and post.featured_image ? 'show' : '' }}">
+
+                <div style="margin-top:.75rem">
+                    <label for="f-img-alt" class="f-label">Texto alternativo (alt)</label>
+                    <input id="f-img-alt" name="featured_image_alt" type="text" class="f-input"
+                           value="{{ is_edit ? post.featured_image_alt : (old.featured_image_alt ?? '') }}"
+                           maxlength="255"
+                           placeholder="Describe la imagen para accesibilidad…">
+                </div>
+
+                {% if is_edit and post.featured_image %}
+                <button type="button" id="btn-remove-img" class="btn-outline"
+                        style="margin-top:.5rem;padding:.4rem .875rem;font-size:.8rem;width:100%">
+                    Quitar imagen
+                </button>
+                {% endif %}
+            </div>
+
+        </div>
+    </div>
+
+</form>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const CSRF    = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+const IS_EDIT = {{ is_edit ? 'true' : 'false' }};
+const POST_ID = {{ is_edit ? post.id : 'null' }};
+
+/* ── Contenido inicial para Editor.js ──────────────────────────────────
+   Si el post tiene contenido HTML (pre-migración), se carga como bloque
+   raw para preservarlo. Si ya es JSON de Editor.js se usa directamente. */
+{% if is_edit and post.content %}
+const SAVED_CONTENT = {{ post.content|json_encode|raw }};
+{% else %}
+const SAVED_CONTENT = null;
+{% endif %}
+
+function buildInitialData(raw) {
+    if (!raw) return { blocks: [] };
+    try {
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.blocks)) return parsed;
+    } catch (_) { /* not JSON — treat as legacy HTML */ }
+    return { blocks: [{ type: 'raw', data: { html: raw } }] };
+}
+
+/* ── Editor.js ─────────────────────────────────────────────────────────── */
+let editor;
+
+function initEditor() {
+    editor = new EditorJS({
+        holder: 'editorjs-holder',
+        placeholder: 'Escribe el contenido del artículo…',
+        data: buildInitialData(SAVED_CONTENT),
+        tools: {
+            header: {
+                class: Header,
+                config: { levels: [2, 3, 4], defaultLevel: 2 },
+            },
+            list: {
+                class: List,
+                inlineToolbar: true,
+                config: { defaultStyle: 'unordered' },
+            },
+            image: {
+                class: ImageTool,
+                config: {
+                    endpoints: { byFile: '/admin/blog/media' },
+                    additionalRequestHeaders: { 'X-CSRF-Token': CSRF },
+                    field: 'file',
+                    types: 'image/jpeg,image/png,image/webp',
+                },
+            },
+            quote: {
+                class: Quote,
+                inlineToolbar: true,
+                config: { quotePlaceholder: 'Escribe una cita…', captionPlaceholder: 'Autor' },
+            },
+            code: CodeTool,
+            embed: {
+                class: Embed,
+                config: { services: { youtube: true, vimeo: true, twitter: true } },
+            },
+            table: { class: Table, inlineToolbar: true },
+            delimiter: Delimiter,
+            inlineCode: { class: InlineCode, shortcut: 'CMD+SHIFT+M' },
+            raw: RawTool,
+        },
+        i18n: {
+            messages: {
+                ui: {
+                    blockTunes: { toggler: { 'Click to tune': 'Opciones', 'or drag to move': 'o arrastra' } },
+                    inlineToolbar: { converter: { 'Convert to': 'Convertir a' } },
+                    toolbar: { toolbox: { Add: 'Añadir' } },
+                },
+                toolNames: {
+                    Text: 'Texto', Heading: 'Encabezado', List: 'Lista',
+                    Image: 'Imagen', Quote: 'Cita', Code: 'Código',
+                    Embed: 'Insertar', Table: 'Tabla', Delimiter: 'Separador',
+                    'Inline Code': 'Código en línea', 'Raw HTML': 'HTML',
+                },
+                blockTunes: {
+                    delete: { Delete: 'Eliminar', 'Click to delete': 'Clic para eliminar' },
+                    moveUp: { 'Move up': 'Mover arriba' },
+                    moveDown: { 'Move down': 'Mover abajo' },
+                },
+            },
+        },
+    });
+}
+
+document.addEventListener('DOMContentLoaded', initEditor);
+
+/* ── Serializar Editor.js → JSON antes del envío ──────────────────────── */
+document.getElementById('post-form')?.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    try {
+        const outputData = await editor.save();
+        document.getElementById('f-content').value = JSON.stringify(outputData);
+    } catch (err) {
+        console.error('Error al serializar Editor.js:', err);
+        document.getElementById('f-content').value = '';
+    }
+    // Limpiar borrador y enviar
+    try { localStorage.removeItem(`szm-draft-${IS_EDIT ? POST_ID : 'new'}`); } catch (_) {}
+    this.submit();
+});
+
+/* ── Slug ─────────────────────────────────────────────────────────────── */
+const titleInput   = document.getElementById('f-title');
+const slugInput    = document.getElementById('f-slug');
+const slugDisplay  = document.getElementById('slug-display');
+const btnGenSlug   = document.getElementById('btn-gen-slug');
+let   slugManual   = IS_EDIT;
+
+async function fetchSlug(title) {
+    if (!title.trim()) return;
+    const fd = new FormData();
+    fd.append('title', title);
+    if (POST_ID) fd.append('id', POST_ID);
+    try {
+        const res  = await fetch('/admin/blog/slug-preview', { method: 'POST', body: fd });
+        const json = await res.json();
+        slugInput.value         = json.slug;
+        slugDisplay.textContent = json.slug;
+    } catch {}
+}
+
+titleInput?.addEventListener('input', () => {
+    updateCounter('title-counter', titleInput.value.length, 255);
+    if (!slugManual) fetchSlug(titleInput.value);
+});
+
+slugInput?.addEventListener('input', () => {
+    slugManual = true;
+    slugDisplay.textContent = slugInput.value;
+});
+
+btnGenSlug?.addEventListener('click', () => {
+    slugManual = false;
+    fetchSlug(titleInput.value);
+});
+
+/* ── Contadores de caracteres ────────────────────────────────────────── */
+function updateCounter(id, len, max) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = `${len} / ${max}`;
+    el.className = 'char-counter' + (len > max ? ' over' : len > max * .85 ? ' warn' : '');
+}
+
+document.getElementById('f-excerpt')?.addEventListener('input', e =>
+    updateCounter('excerpt-counter', e.target.value.length, 500));
+document.getElementById('f-meta-title')?.addEventListener('input', e =>
+    updateCounter('meta-title-counter', e.target.value.length, 70));
+document.getElementById('f-meta-desc')?.addEventListener('input', e =>
+    updateCounter('meta-desc-counter', e.target.value.length, 165));
+
+['f-title', 'f-excerpt', 'f-meta-title', 'f-meta-desc'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.dispatchEvent(new Event('input'));
+});
+
+/* ── Estado programado ───────────────────────────────────────────────── */
+const statusSel = document.getElementById('f-status');
+const schedWrap = document.getElementById('scheduled-date-wrap');
+
+function toggleScheduled() {
+    schedWrap.style.display = statusSel.value === 'scheduled' ? 'block' : 'none';
+}
+statusSel?.addEventListener('change', toggleScheduled);
+toggleScheduled();
+
+/* ── Tags ────────────────────────────────────────────────────────────── */
+const tagInput = document.getElementById('tag-input');
+const tagPills = document.getElementById('tag-pills');
+const fTags    = document.getElementById('f-tags');
+let   tagList  = fTags.value ? fTags.value.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+function escHtml(s) {
+    return String(s).replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function renderPills() {
+    tagPills.innerHTML = '';
+    tagList.forEach((name, i) => {
+        const pill = document.createElement('span');
+        pill.className = 'tag-pill';
+        pill.innerHTML = `${escHtml(name)}<button type="button" aria-label="Quitar ${escHtml(name)}">×</button>`;
+        pill.querySelector('button').addEventListener('click', () => {
+            tagList.splice(i, 1);
+            syncTags();
+        });
+        tagPills.appendChild(pill);
+    });
+    fTags.value = tagList.join(',');
+}
+
+function addTag(name) {
+    name = name.trim();
+    if (!name || tagList.includes(name)) return;
+    tagList.push(name);
+    syncTags();
+}
+
+function syncTags() {
+    fTags.value = tagList.join(',');
+    renderPills();
+}
+
+tagInput?.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        addTag(tagInput.value);
+        tagInput.value = '';
+    }
+});
+
+document.getElementById('tag-suggestions')?.addEventListener('click', e => {
+    const btn = e.target.closest('[data-tag]');
+    if (!btn) return;
+    addTag(btn.dataset.tag);
+});
+
+renderPills();
+
+/* ── Upload imagen destacada ─────────────────────────────────────────── */
+const imgFile     = document.getElementById('f-img-file');
+const imgPreview  = document.getElementById('img-preview');
+const imgProgress = document.getElementById('img-upload-progress');
+const fiPath      = document.getElementById('fi-path');
+
+imgFile?.addEventListener('change', async () => {
+    const file = imgFile.files[0];
+    if (!file) return;
+
+    // Preview local inmediato
+    const reader = new FileReader();
+    reader.onload = ev => {
+        imgPreview.src = ev.target.result;
+        imgPreview.classList.add('show');
+    };
+    reader.readAsDataURL(file);
+
+    // Upload al servidor
+    imgProgress.style.display = 'block';
+    const fd = new FormData();
+    fd.append('_token', CSRF);
+    fd.append('file', file);
+    fd.append('collection', 'featured');
+    if (POST_ID) fd.append('post_id', POST_ID);
+
+    try {
+        const res  = await fetch('/admin/blog/media', { method: 'POST', body: fd });
+        const json = await res.json();
+        if (json.ok) {
+            fiPath.value   = json.url;          // fix: server returns `url`, not `path`
+            imgPreview.src = json.url;
+        } else {
+            alert(json.error ?? 'Error al subir la imagen.');
+        }
+    } catch {
+        alert('Error de red al subir la imagen.');
+    } finally {
+        imgProgress.style.display = 'none';
+    }
+});
+
+document.getElementById('btn-remove-img')?.addEventListener('click', () => {
+    fiPath.value = '';
+    imgPreview.classList.remove('show');
+    imgPreview.src = '';
+    imgFile.value  = '';
+});
+
+/* ── Auto-guardado de borrador ───────────────────────────────────────── */
+(function () {
+    const KEY      = `szm-draft-${IS_EDIT ? POST_ID : 'new'}`;
+    const INTERVAL = 30_000;
+    let   saveTimer;
+
+    const toast = document.createElement('div');
+    toast.className = 'draft-saved-toast';
+    toast.textContent = '💾 Borrador guardado automáticamente';
+    document.body.appendChild(toast);
+
+    function flashToast() {
+        toast.classList.add('show');
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    async function getState() {
+        let content = '';
+        try {
+            if (editor) {
+                const data = await editor.save();
+                content = JSON.stringify(data);
+            }
+        } catch (_) {}
+        return {
+            title:   document.getElementById('f-title')?.value ?? '',
+            excerpt: document.getElementById('f-excerpt')?.value ?? '',
+            content,
+            ts:      Date.now(),
+        };
+    }
+
+    async function autoSave() {
+        try {
+            const state = await getState();
+            if (!state.title && !state.content) return;
+            localStorage.setItem(KEY, JSON.stringify(state));
+            flashToast();
+        } catch {}
+    }
+
+    function tryRecover() {
+        if (IS_EDIT) return;
+        try {
+            const raw = localStorage.getItem(KEY);
+            if (!raw) return;
+            const draft = JSON.parse(raw);
+            if (Date.now() - draft.ts > 24 * 3600_000) { localStorage.removeItem(KEY); return; }
+            if (!draft.title && !draft.content) return;
+
+            const saved   = new Date(draft.ts).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+            const banner  = document.createElement('div');
+            banner.style.cssText = [
+                'background:#fffbeb', 'border:1px solid #fbbf24', 'border-radius:8px',
+                'padding:.75rem 1.25rem', 'margin-bottom:1rem',
+                'display:flex', 'align-items:center', 'justify-content:space-between',
+                'gap:1rem', 'font-size:.875rem', 'color:#92400e',
+            ].join(';');
+            banner.innerHTML = `
+                <span>Hay un borrador guardado a las <strong>${saved}</strong>.</span>
+                <div style="display:flex;gap:.5rem;flex-shrink:0">
+                    <button type="button" id="draft-restore"
+                        style="background:#f59e0b;color:#fff;border:none;border-radius:6px;
+                               padding:.3rem .875rem;cursor:pointer;font-size:.8125rem;font-weight:600">
+                        Restaurar
+                    </button>
+                    <button type="button" id="draft-discard"
+                        style="background:none;border:1px solid #fbbf24;color:#92400e;
+                               border-radius:6px;padding:.3rem .75rem;cursor:pointer;font-size:.8125rem">
+                        Descartar
+                    </button>
+                </div>`;
+
+            const form = document.getElementById('post-form');
+            form?.insertBefore(banner, form.firstChild);
+
+            document.getElementById('draft-restore')?.addEventListener('click', () => {
+                const titleEl   = document.getElementById('f-title');
+                const excerptEl = document.getElementById('f-excerpt');
+                if (titleEl)   titleEl.value   = draft.title;
+                if (excerptEl) excerptEl.value = draft.excerpt;
+                if (draft.content && editor) {
+                    try {
+                        const parsed = JSON.parse(draft.content);
+                        editor.render(parsed);
+                    } catch (_) {}
+                }
+                banner.remove();
+            });
+
+            document.getElementById('draft-discard')?.addEventListener('click', () => {
+                localStorage.removeItem(KEY);
+                banner.remove();
+            });
+        } catch {}
+    }
+
+    // Esperar a que Editor.js esté listo, luego iniciar ciclo
+    const pollReady = setInterval(() => {
+        if (editor && editor.isReady !== undefined) {
+            editor.isReady.then(() => {
+                clearInterval(pollReady);
+                tryRecover();
+                setInterval(autoSave, INTERVAL);
+            }).catch(() => clearInterval(pollReady));
+        }
+    }, 300);
+})();
+</script>
+{% endblock %}

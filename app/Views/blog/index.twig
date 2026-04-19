@@ -4,6 +4,7 @@
 
 {% block head %}
 {% include 'blog/_meta.twig' %}
+<link rel="alternate" type="application/rss+xml" title="{{ app_name }} — RSS" href="/rss.xml">
 <link rel="stylesheet" href="{{ asset('public/css/blog.css') }}">
 {% endblock %}
 
@@ -135,4 +136,37 @@
 
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Skeleton loader en paginación / búsqueda ─────────────────────── */
+(function () {
+    const SKELETON = `
+        <div class="blog-skeleton-card">
+            <div class="blog-skeleton__img blog-skeleton__pulse"></div>
+            <div class="blog-skeleton__body">
+                <div class="blog-skeleton__line blog-skeleton__line--cat blog-skeleton__pulse"></div>
+                <div class="blog-skeleton__line blog-skeleton__line--title blog-skeleton__pulse"></div>
+                <div class="blog-skeleton__line blog-skeleton__line--title2 blog-skeleton__pulse"></div>
+                <div class="blog-skeleton__line blog-skeleton__line--meta blog-skeleton__pulse"></div>
+            </div>
+        </div>`;
+
+    function showSkeletons() {
+        const grid = document.querySelector('.blog-grid');
+        if (!grid) return;
+        const count = Math.max(3, Math.min(grid.children.length, 6));
+        grid.innerHTML = Array(count).fill(SKELETON).join('');
+    }
+
+    document.querySelectorAll('.blog-pagination a').forEach(a =>
+        a.addEventListener('click', showSkeletons));
+
+    document.querySelector('[role="search"]')?.addEventListener('submit', function () {
+        const q = this.querySelector('input[name="q"]')?.value.trim();
+        if (q) showSkeletons();
+    });
+})();
+</script>
 {% endblock %}

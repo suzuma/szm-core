@@ -16,15 +16,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * Tabla: szm_users (migración create_auth_tables)
  *
- * @property int         $id
- * @property int         $role_id
- * @property string      $name
- * @property string      $email
- * @property string      $password
- * @property bool        $active
- * @property int         $failed_attempts
- * @property string|null $reset_token
- * @property string|null $last_login_ip
+ * @property int          $id
+ * @property int          $role_id
+ * @property string       $name
+ * @property string       $email
+ * @property string       $password
+ * @property bool         $active
+ * @property int          $failed_attempts
+ * @property Carbon|null  $locked_until
+ * @property string|null  $reset_token
+ * @property Carbon|null  $reset_token_expires
+ * @property string|null  $last_login_ip
+ * @property-read Role|null $role
  */
 class User extends BaseModel
 {

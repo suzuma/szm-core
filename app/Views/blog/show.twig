@@ -168,6 +168,13 @@
 </section>
 {% endif %}
 
+{# Botón volver arriba #}
+<button class="blog-back-top" id="back-to-top" aria-label="Volver al inicio">
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7"/>
+    </svg>
+</button>
+
 {% endblock %}
 
 {% block scripts %}
@@ -201,5 +208,82 @@ document.querySelector('.blog-share__btn--copy')?.addEventListener('click', func
         setTimeout(() => { this.innerHTML = orig; }, 2000);
     });
 });
+
+/* ── Tabla de contenidos auto-generada ───────────────────────────────── */
+(function () {
+    const prose = document.getElementById('prose-content');
+    if (!prose) return;
+
+    const headings = Array.from(prose.querySelectorAll('h2, h3'));
+    if (headings.length < 2) return;
+
+    // Asignar IDs únicos a cada encabezado
+    const seen = {};
+    headings.forEach(h => {
+        const base = h.textContent.trim().toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
+        seen[base] = (seen[base] || 0) + 1;
+        h.id = 'h-' + base + (seen[base] > 1 ? '-' + seen[base] : '');
+    });
+
+    // Construir el ToC
+    const nav  = document.createElement('nav');
+    nav.className = 'blog-toc';
+    nav.setAttribute('aria-label', 'Tabla de contenidos');
+
+    const title = document.createElement('p');
+    title.className = 'blog-toc__title';
+    title.textContent = 'Contenido';
+    nav.appendChild(title);
+
+    const ul = document.createElement('ul');
+    ul.className = 'blog-toc__list';
+
+    headings.forEach(h => {
+        const li = document.createElement('li');
+        li.className = 'blog-toc__item' + (h.tagName === 'H3' ? ' blog-toc__item--h3' : '');
+        const a = document.createElement('a');
+        a.className = 'blog-toc__link';
+        a.href = '#' + h.id;
+        a.textContent = h.textContent.trim();
+        a.addEventListener('click', e => {
+            e.preventDefault();
+            document.getElementById(h.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            history.replaceState(null, '', '#' + h.id);
+        });
+        li.appendChild(a);
+        ul.appendChild(li);
+    });
+
+    nav.appendChild(ul);
+    prose.insertBefore(nav, prose.firstChild);
+
+    // Resaltar sección activa al hacer scroll
+    const links = ul.querySelectorAll('.blog-toc__link');
+    const io = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                links.forEach(l => l.classList.remove('active'));
+                ul.querySelector(`a[href="#${entry.target.id}"]`)?.classList.add('active');
+            }
+        });
+    }, { rootMargin: '0px 0px -65% 0px', threshold: 0 });
+
+    headings.forEach(h => io.observe(h));
+})();
+
+/* ── Botón volver arriba ─────────────────────────────────────────────── */
+(function () {
+    const btn = document.getElementById('back-to-top');
+    if (!btn) return;
+
+    window.addEventListener('scroll', () => {
+        btn.classList.toggle('visible', window.scrollY > 450);
+    }, { passive: true });
+
+    btn.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+})();
 </script>
 {% endblock %}

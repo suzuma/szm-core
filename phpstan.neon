@@ -1,0 +1,33 @@
+parameters:
+    level: 5
+
+    paths:
+        - app
+        - core
+
+    excludePaths:
+        - vendor
+
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: false
+
+    ignoreErrors:
+        # ── Eloquent: métodos mágicos (scopes, relaciones, query builder) ──────
+        # Cubre: Builder<Model>, Query\Builder, Eloquent\Builder, Model, Relations\*
+        - '#Call to an undefined (static )?method Illuminate\\Database\\(Eloquent\\Builder<[^>]+>|Eloquent\\(Builder|Model)|Query\\Builder|Eloquent\\Relations\\[a-zA-Z]+)::[a-zA-Z]+\(\)\.#'
+        - '#Call to an undefined (static )?method App\\Models\\[a-zA-Z]+::[a-zA-Z]+\(\)\.#'
+
+        # ── Eloquent: propiedades mágicas (relaciones, casts, accessors) ──────
+        - '#Access to an undefined property (App\\Models\\[a-zA-Z]+|Illuminate\\Database\\Eloquent\\Model)::\$[a-zA-Z]+\.#'
+
+        # ── Eloquent: tipos de retorno de scopes ──────────────────────────────
+        - '#Method App\\Models\\[a-zA-Z]+::(scope[a-zA-Z]+|[a-zA-Z]+)\(\) should return .+#'
+
+        # ── Constantes definidas en runtime por el bootstrap ──────────────────
+        - '#Constant _[A-Z_]+_ not found\.#'
+
+        # ── new static() en traits de Eloquent (patrón válido en PHP 8) ───────
+        - '#Unsafe usage of new static\(\)\.#'
+
+        # ── HTMLPurifier: clases cuando la dependencia es opcional ────────────
+        - '#Class HTMLPurifier[a-zA-Z_]* not found#'

@@ -24,9 +24,14 @@
 /.phpunit.result.cache
 /coverage/
 
+# ── HTMLPurifier cache ────────────────────────────────────────────────────────
+/storage/htmlpurifier/*
+!/storage/htmlpurifier/.gitkeep
+
 # ── PHP CS Fixer ──────────────────────────────────────────────────────────────
 /.php-cs-fixer.cache
 /.php_cs.cache
+/storage/cache/.php-cs-fixer.cache
 
 # ── PHPStan ───────────────────────────────────────────────────────────────────
 /.phpstan.cache/

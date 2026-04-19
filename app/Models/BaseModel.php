@@ -13,6 +13,9 @@ use Illuminate\Database\Eloquent\Builder;
  *
  * Modelo Eloquent base para todos los modelos de la aplicación.
  *
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ *
  * Ubicación: app/Models/BaseModel.php
  *
  * Qué centraliza:

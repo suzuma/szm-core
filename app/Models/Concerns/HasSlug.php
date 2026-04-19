@@ -92,11 +92,15 @@ trait HasSlug
     private static function slugify(string $value): string
     {
         // 1. Transliterar caracteres Unicode → ASCII
-        $slug = transliterator_transliterate('Any-Latin; Latin-ASCII; Lower()', $value);
+        if (\function_exists('transliterator_transliterate')) {
+            $slug = \transliterator_transliterate('Any-Latin; Latin-ASCII; Lower()', $value);
+        } else {
+            $slug = false;
+        }
 
         if ($slug === false || $slug === '') {
             // Fallback si la extensión intl no está disponible
-            $slug = mb_strtolower($value, 'UTF-8');
+            $slug = \mb_strtolower($value, 'UTF-8');
             $map  = [
                 'á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u',
                 'à'=>'a','è'=>'e','ì'=>'i','ò'=>'o','ù'=>'u',
@@ -104,7 +108,7 @@ trait HasSlug
                 'â'=>'a','ê'=>'e','î'=>'i','ô'=>'o','û'=>'u',
                 'ñ'=>'n','ç'=>'c','ß'=>'ss','ã'=>'a','õ'=>'o',
             ];
-            $slug = strtr($slug, $map);
+            $slug = \strtr($slug, $map);
         }
 
         // 2. Minúsculas

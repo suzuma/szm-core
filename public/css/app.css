@@ -872,3 +872,25 @@ a:hover { color: var(--sky-dk); text-decoration: underline; }
     background: #fef3c7;
     color: #b45309;
 }
+
+/* ── Draft auto-save toast (admin blog form) ─────────────────────────────── */
+.draft-saved-toast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(8px);
+    background: #1e293b;
+    color: #fff;
+    font-size: .8125rem;
+    padding: .4rem 1.1rem;
+    border-radius: 9999px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s, transform .25s;
+    z-index: 600;
+    white-space: nowrap;
+}
+.draft-saved-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
