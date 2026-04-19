@@ -1,0 +1,185 @@
+{% import 'components/alert.twig' as alert %}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ app_name }}{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{{ asset('public/assets/logo.png') }}">
+    <link rel="stylesheet" href="{{ asset('public/css/app.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+
+{# ── Toast container (T2) ────────────────────────────────────────────── #}
+<div id="toast-container" aria-live="polite"></div>
+
+<div class="layout">
+
+    {# ── Sidebar ──────────────────────────────────────────────────── #}
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <img src="{{ asset('public/assets/logo.png') }}" alt="{{ app_name }}">
+        </div>
+
+        <ul class="nav">
+            <li class="nav-item {{ _uri == '/' ? 'active' : '' }}">
+                <a href="/">Inicio</a>
+            </li>
+            {% if auth_role == 'admin' %}
+            <li class="nav-item {{ _uri starts with '/admin' ? 'active' : '' }}">
+                <a href="/admin/audit-log">Audit Log</a>
+            </li>
+            {% endif %}
+            {% block nav_extra %}{% endblock %}
+        </ul>
+
+        <div class="sidebar-footer">
+            <span class="user-name">{{ auth_user_name }}</span>
+            <span class="user-role">{{ auth_role }}</span>
+            <form method="POST" action="/logout">
+                {{ csrf_field()|raw }}
+                <button type="submit" class="logout-btn">Cerrar sesión</button>
+            </form>
+        </div>
+    </aside>
+
+    {# ── Contenido principal ───────────────────────────────────────── #}
+    <div class="main">
+
+        <header class="topbar">
+            <div class="topbar-left">
+                {# Botón hamburguesa (mobile) #}
+                <button class="hamburger" id="sidebarToggle" aria-label="Menú">
+                    <span></span><span></span><span></span>
+                </button>
+                <span class="topbar-title">{% block page_title %}{% endblock %}</span>
+            </div>
+            <div class="topbar-actions">
+                {% block topbar_actions %}{% endblock %}
+            </div>
+        </header>
+
+        {# ── Breadcrumbs ──────────────────────────────────────────── #}
+        {% block breadcrumbs %}{% endblock %}
+
+        <main class="content">
+
+            {# Flash messages via componente #}
+            {% if has_flash('success') %}{{ alert.render('success', flash('success'))|raw }}{% endif %}
+            {% if has_flash('error') %}{{ alert.render('error', flash('error'))|raw }}{% endif %}
+            {% if has_flash('warning') %}{{ alert.render('warning', flash('warning'))|raw }}{% endif %}
+            {% if has_flash('info') %}{{ alert.render('info', flash('info'))|raw }}{% endif %}
+
+            {% block content %}{% endblock %}
+
+        </main>
+    </div>
+
+</div>
+
+{# ── Overlay mobile ───────────────────────────────────────────────────── #}
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+{# ── Modal: sesión por expirar ──────────────────────────────────────── #}
+<div id="session-modal" class="session-modal" hidden role="dialog" aria-modal="true" aria-labelledby="session-modal-title">
+    <div class="session-modal-box">
+        <h3 id="session-modal-title">Sesión por expirar</h3>
+        <p>Tu sesión se cerrará en <strong id="session-countdown">5:00</strong>.<br>¿Deseas continuar?</p>
+        <div class="session-modal-actions">
+            <button type="button" id="session-extend" class="btn">Continuar</button>
+            <form method="POST" action="/logout" style="display:inline">
+                <input type="hidden" name="_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-outline">Cerrar sesión</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+/* ── Sidebar mobile toggle ───────────────────────────────────────────── */
+const sidebar  = document.querySelector('.sidebar');
+const overlay  = document.getElementById('sidebarOverlay');
+const toggle   = document.getElementById('sidebarToggle');
+
+function closeSidebar() {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('visible');
+}
+
+toggle?.addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('visible');
+});
+overlay?.addEventListener('click', closeSidebar);
+
+/* ── Loading state en formularios ────────────────────────────────────── */
+document.querySelectorAll('form').forEach(form => {
+    form.addEventListener('submit', () => {
+        form.querySelectorAll('button[type="submit"], button:not([type])').forEach(btn => {
+            btn.classList.add('btn-loading');
+            btn.disabled = true;
+        });
+    });
+});
+
+/* ── Toast API ───────────────────────────────────────────────────────── */
+window.toast = function(message, type = 'info', duration = 4000) {
+    const container = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = `toast toast-${type}`;
+    t.setAttribute('role', 'status');
+    t.innerHTML = `<span>${message}</span><button class="toast-close" onclick="this.parentElement.remove()">×</button>`;
+    container.appendChild(t);
+    requestAnimationFrame(() => t.classList.add('toast-show'));
+    if (duration > 0) setTimeout(() => { t.classList.remove('toast-show'); setTimeout(() => t.remove(), 300); }, duration);
+};
+
+/* ── Session timeout warning ─────────────────────────────────────────── */
+(function () {
+    const LIFETIME_MS = {{ session_lifetime }} * 60 * 1000;
+    const WARN_MS     = Math.min(5 * 60 * 1000, LIFETIME_MS * 0.2);
+    const modal       = document.getElementById('session-modal');
+    const countdown   = document.getElementById('session-countdown');
+    const extendBtn   = document.getElementById('session-extend');
+    let warnTimer, countInterval;
+
+    function fmt(s) {
+        const m = Math.floor(s / 60);
+        return m + ':' + String(s % 60).padStart(2, '0');
+    }
+
+    function startCountdown() {
+        let remaining = Math.round(WARN_MS / 1000);
+        if (countdown) countdown.textContent = fmt(remaining);
+        if (modal) modal.hidden = false;
+        clearInterval(countInterval);
+        countInterval = setInterval(() => {
+            remaining--;
+            if (countdown) countdown.textContent = fmt(remaining);
+            if (remaining <= 0) {
+                clearInterval(countInterval);
+                window.location.href = '/login';
+            }
+        }, 1000);
+    }
+
+    function resetTimer() {
+        clearTimeout(warnTimer);
+        clearInterval(countInterval);
+        if (modal) modal.hidden = true;
+        warnTimer = setTimeout(startCountdown, LIFETIME_MS - WARN_MS);
+    }
+
+    extendBtn?.addEventListener('click', () => {
+        fetch('/session-keepalive').finally(resetTimer);
+    });
+
+    resetTimer();
+})();
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

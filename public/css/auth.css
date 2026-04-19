@@ -1,0 +1,231 @@
+/* ==========================================================================
+   SZM-CORE — Auth Layout
+   Design System: Deep Navy #0D3B66 · Sky Blue #00BFFF · Gray #F0F4F8
+   Font: Inter (system fallback)
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ── Reset ───────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Base ────────────────────────────────────────────────────────────────── */
+body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: #F0F4F8;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #0D3B66;
+    position: relative;
+}
+
+/* ── Watermark — logo centrado como gota de agua ─────────────────────────── */
+body::before {
+    content: '';
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(480px, 70vw);
+    aspect-ratio: 2048 / 1117;
+    background: url('/public/assets/logo.png') center / contain no-repeat;
+    opacity: .06;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.card { position: relative; z-index: 1; }
+
+/* ── Card ────────────────────────────────────────────────────────────────── */
+.card {
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 4px 32px rgba(13, 59, 102, .10);
+    padding: 2.5rem 2rem;
+    width: 100%;
+    max-width: 420px;
+}
+
+/* ── Brand ───────────────────────────────────────────────────────────────── */
+.auth-brand {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.75rem;
+    border-bottom: 1px solid #e8eef4;
+}
+
+.auth-brand img {
+    max-width: 220px;
+    width: 100%;
+    height: auto;
+}
+
+/* ── Headings ────────────────────────────────────────────────────────────── */
+.card-title {
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: #0D3B66;
+    margin-bottom: .25rem;
+}
+
+.card-subtitle {
+    font-size: .875rem;
+    color: #5a7fa8;
+    margin-bottom: 1.75rem;
+}
+
+/* ── Form ────────────────────────────────────────────────────────────────── */
+label {
+    display: block;
+    font-size: .8125rem;
+    font-weight: 600;
+    color: #0D3B66;
+    margin-bottom: .35rem;
+}
+
+input[type="email"],
+input[type="password"],
+input[type="text"] {
+    width: 100%;
+    padding: .625rem .875rem;
+    border: 1.5px solid #d1dde8;
+    border-radius: 8px;
+    font-size: .9375rem;
+    font-family: inherit;
+    color: #0D3B66;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+    margin-bottom: 1rem;
+    background: #ffffff;
+}
+
+input:focus {
+    border-color: #00BFFF;
+    box-shadow: 0 0 0 3px rgba(0, 191, 255, .15);
+}
+
+input::placeholder { color: #a0b4c8; }
+
+/* ── Button ──────────────────────────────────────────────────────────────── */
+.btn {
+    display: block;
+    width: 100%;
+    padding: .75rem 1rem;
+    background: #0D3B66;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: .9375rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background .15s, transform .1s;
+    letter-spacing: .01em;
+}
+
+.btn:hover  { background: #0a2f52; }
+.btn:active { transform: scale(.98); }
+
+/* ── Alerts ──────────────────────────────────────────────────────────────── */
+.alert {
+    padding: .75rem 1rem;
+    border-radius: 8px;
+    font-size: .875rem;
+    margin-bottom: 1.25rem;
+    font-weight: 500;
+}
+
+.alert-error   { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+.alert-success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+
+/* ── Link ────────────────────────────────────────────────────────────────── */
+.link {
+    display: block;
+    text-align: center;
+    margin-top: 1.25rem;
+    font-size: .875rem;
+    color: #00BFFF;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color .15s;
+}
+
+.link:hover { color: #0099cc; text-decoration: underline; }
+
+/* ==========================================================================
+   PILAR 2 — Validación inline, remember-me, medidor de fortaleza
+   ========================================================================== */
+
+/* ── Componente field (de input.twig) ───────────────────────────────────── */
+.field { margin-bottom: 1rem; }
+
+/* Cuando el input está dentro de .field el margen lo controla el wrapper */
+.field input[type="email"],
+.field input[type="password"],
+.field input[type="text"] { margin-bottom: 0; }
+
+/* Estado inválido */
+.input-invalid {
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, .10) !important;
+}
+
+/* Mensaje de error por campo */
+.field-hint-error {
+    display: block;
+    font-size: .75rem;
+    color: #dc2626;
+    margin-top: .3rem;
+    font-weight: 500;
+}
+
+/* ── Remember me ─────────────────────────────────────────────────────────── */
+.remember-row {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: 1.25rem;
+    font-size: .8125rem;
+    color: #5a7fa8;
+    cursor: pointer;
+    user-select: none;
+}
+
+.remember-row input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    accent-color: #0D3B66;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+/* ── Medidor de fortaleza de contraseña ──────────────────────────────────── */
+.strength-wrap {
+    margin-top: -.5rem;
+    margin-bottom: 1rem;
+}
+
+.strength-bar {
+    height: 4px;
+    background: #e8eef4;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.strength-fill {
+    height: 100%;
+    width: 0;
+    border-radius: 2px;
+    transition: width .3s ease, background-color .3s ease;
+}
+
+.strength-label {
+    display: block;
+    font-size: .75rem;
+    margin-top: .3rem;
+    font-weight: 600;
+}

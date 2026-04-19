@@ -1,0 +1,23 @@
+{% macro render(label, variant = 'primary', type = 'button', attrs = '') %}
+{#
+    Variantes: primary | accent | ghost | danger
+    Ejemplo:
+        {% import 'components/button.twig' as btn %}
+        {{ btn.render('Guardar', 'primary', 'submit')|raw }}
+        {{ btn.render('Cancelar', 'ghost')|raw }}
+        {{ btn.render('Eliminar', 'danger', 'button', 'data-confirm="¿Seguro?"')|raw }}
+#}
+<button type="{{ type }}" class="btn btn-{{ variant }}" {{ attrs|raw }}>
+    <span class="btn-label">{{ label }}</span>
+    <span class="btn-spinner" aria-hidden="true"></span>
+</button>
+{% endmacro %}
+
+{% macro link(label, url, variant = 'primary', attrs = '') %}
+{#
+    Botón como enlace <a>
+    Ejemplo:
+        {{ btn.link('Ver todos', '/users', 'accent')|raw }}
+#}
+<a href="{{ url }}" class="btn btn-{{ variant }}" {{ attrs|raw }}>{{ label }}</a>
+{% endmacro %}

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ app_name }}{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{{ asset('public/assets/logo.png') }}">
+    <link rel="stylesheet" href="{{ asset('public/css/auth.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div class="card">
+        <div class="auth-brand">
+            <img src="{{ asset('public/assets/logo.png') }}" alt="{{ app_name }}">
+        </div>
+        {% block content %}{% endblock %}
+    </div>
+
+    <script>
+    /* ── Loading state en formularios auth ───────────────────────────── */
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', () => {
+            form.querySelectorAll('button[type="submit"], button:not([type])').forEach(btn => {
+                btn.classList.add('btn-loading');
+                btn.disabled = true;
+            });
+        });
+    });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

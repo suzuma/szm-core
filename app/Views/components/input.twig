@@ -1,0 +1,62 @@
+{% macro render(name, label, type = 'text', value = '', error = '', attrs = '') %}
+{#
+    Genera un campo de formulario con label, input y mensaje de error por campo.
+    Ejemplo:
+        {% import 'components/input.twig' as input %}
+        {{ input.render('email', 'Correo electrónico', 'email', old.email, errors.email)|raw }}
+        {{ input.render('password', 'Contraseña', 'password')|raw }}
+#}
+<div class="field {% if error %}field-error{% endif %}">
+    <label for="field-{{ name }}">{{ label }}</label>
+    <input
+        type="{{ type }}"
+        id="field-{{ name }}"
+        name="{{ name }}"
+        value="{{ value|e }}"
+        class="input {% if error %}input-invalid{% endif %}"
+        {% if error %}aria-describedby="err-{{ name }}" aria-invalid="true"{% endif %}
+        {{ attrs|raw }}
+    >
+    {% if error %}
+        <span class="field-hint field-hint-error" id="err-{{ name }}">{{ error }}</span>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{% macro textarea(name, label, value = '', rows = 4, error = '', attrs = '') %}
+<div class="field {% if error %}field-error{% endif %}">
+    <label for="field-{{ name }}">{{ label }}</label>
+    <textarea
+        id="field-{{ name }}"
+        name="{{ name }}"
+        rows="{{ rows }}"
+        class="input {% if error %}input-invalid{% endif %}"
+        {% if error %}aria-describedby="err-{{ name }}" aria-invalid="true"{% endif %}
+        {{ attrs|raw }}
+    >{{ value|e }}</textarea>
+    {% if error %}
+        <span class="field-hint field-hint-error" id="err-{{ name }}">{{ error }}</span>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{% macro select(name, label, options, selected = '', error = '', attrs = '') %}
+{#
+    options: array de {value, label}
+    Ejemplo:
+        {{ input.select('rol', 'Rol', [{value:'admin',label:'Admin'}], 'admin')|raw }}
+#}
+<div class="field {% if error %}field-error{% endif %}">
+    <label for="field-{{ name }}">{{ label }}</label>
+    <select id="field-{{ name }}" name="{{ name }}" class="input {% if error %}input-invalid{% endif %}" {{ attrs|raw }}>
+        {% for option in options %}
+            <option value="{{ option.value }}" {% if option.value == selected %}selected{% endif %}>
+                {{ option.label }}
+            </option>
+        {% endfor %}
+    </select>
+    {% if error %}
+        <span class="field-hint field-hint-error" id="err-{{ name }}">{{ error }}</span>
+    {% endif %}
+</div>
+{% endmacro %}

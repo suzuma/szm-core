@@ -1,0 +1,10 @@
+{% macro render(label, variant = 'default') %}
+{#
+    Variantes: default | primary | success | warning | danger | info
+    Ejemplo:
+        {% import 'components/badge.twig' as badge %}
+        {{ badge.render('Admin', 'primary') }}
+        {{ badge.render('Activo', 'success') }}
+#}
+<span class="badge badge-{{ variant }}">{{ label }}</span>
+{% endmacro %}

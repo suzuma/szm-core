@@ -1,0 +1,13 @@
+{% macro render(label, value, accent = 'sky') %}
+{#
+    accent: sky | navy | success | warning | danger
+    Ejemplo:
+        {% import 'components/stat_card.twig' as stat %}
+        {{ stat.render('Usuarios activos', 128)|raw }}
+        {{ stat.render('Errores hoy', 3, 'danger')|raw }}
+#}
+<div class="stat-card stat-card-{{ accent }}">
+    <div class="stat-label">{{ label }}</div>
+    <div class="stat-value">{{ value }}</div>
+</div>
+{% endmacro %}

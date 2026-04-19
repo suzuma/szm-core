@@ -1,0 +1,76 @@
+{% extends 'layouts/auth.twig' %}
+{% import 'components/alert.twig' as alert %}
+{% import 'components/input.twig' as input %}
+{% import 'components/button.twig' as btn %}
+
+{% block title %}Recuperar contraseña — {{ app_name }}{% endblock %}
+
+{% block content %}
+
+    <h1 class="card-title">Recuperar contraseña</h1>
+    <p class="card-subtitle">Te enviaremos las instrucciones a tu correo</p>
+
+    {% if has_flash('error') %}{{ alert.render('error', flash('error'))|raw }}{% endif %}
+
+    <form method="POST" action="/forgot-password" novalidate data-validate>
+        {{ csrf_field()|raw }}
+
+        {{ input.render('email', 'Correo electrónico', 'email', old.email ?? '', errors.email ?? '',
+            'autocomplete="email" autofocus required')|raw }}
+
+        {{ btn.render('Enviar instrucciones', 'primary', 'submit')|raw }}
+    </form>
+
+    <a href="/login" class="link">← Volver al inicio de sesión</a>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Validación inline — forgot ───────────────────────────────────────── */
+(function () {
+    const form = document.querySelector('[data-validate]');
+    if (!form) return;
+
+    function showError(name, msg) {
+        const field = form.querySelector(`[name="${name}"]`);
+        if (!field) return;
+        field.closest('.field')?.classList.add('field-error');
+        field.classList.add('input-invalid');
+        let hint = document.getElementById(`err-${name}`);
+        if (!hint) {
+            hint = document.createElement('span');
+            hint.id = `err-${name}`;
+            hint.className = 'field-hint field-hint-error';
+            field.after(hint);
+        }
+        hint.textContent = msg;
+    }
+
+    function clearError(name) {
+        const field = form.querySelector(`[name="${name}"]`);
+        if (!field) return;
+        field.closest('.field')?.classList.remove('field-error');
+        field.classList.remove('input-invalid');
+        document.getElementById(`err-${name}`)?.remove();
+    }
+
+    form.querySelector('[name="email"]')?.addEventListener('input', () => clearError('email'));
+
+    form.addEventListener('submit', e => {
+        const email = form.querySelector('[name="email"]')?.value.trim() ?? '';
+        let valid = true;
+        if (email === '') {
+            showError('email', 'Correo electrónico es requerido.');
+            valid = false;
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            showError('email', 'Ingresa un correo válido.');
+            valid = false;
+        } else {
+            clearError('email');
+        }
+        if (!valid) { e.preventDefault(); e.stopImmediatePropagation(); }
+    });
+})();
+</script>
+{% endblock %}

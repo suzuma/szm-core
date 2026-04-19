@@ -1,0 +1,19 @@
+{% macro render(type, message) %}
+<div class="alert alert-{{ type }}" role="alert">
+    <span class="alert-icon">
+        {% if type == 'success' %}✓
+        {% elseif type == 'error' %}✕
+        {% elseif type == 'warning' %}⚠
+        {% else %}ℹ{% endif %}
+    </span>
+    {{ message }}
+</div>
+{% endmacro %}
+
+{# Atajo: muestra flash si existe (sin consumirlo dos veces) #}
+{% macro flash(type) %}
+    {% import _self as alert %}
+    {% if has_flash(type) %}
+        {{ alert.render(type, flash(type)) }}
+    {% endif %}
+{% endmacro %}

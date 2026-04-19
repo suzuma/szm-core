@@ -1,0 +1,103 @@
+{% extends 'layouts/auth.twig' %}
+{% import 'components/alert.twig' as alert %}
+{% import 'components/input.twig' as input %}
+{% import 'components/button.twig' as btn %}
+
+{% block title %}Iniciar sesión — {{ app_name }}{% endblock %}
+
+{% block content %}
+
+    {% if has_flash('error') %}{{ alert.render('error', flash('error'))|raw }}{% endif %}
+    {% if has_flash('success') %}{{ alert.render('success', flash('success'))|raw }}{% endif %}
+
+    <form method="POST" action="/login" novalidate data-validate>
+        {{ csrf_field()|raw }}
+
+        {{ input.render('email', 'Correo electrónico', 'email', old.email ?? '', errors.email ?? '',
+            'autocomplete="email" autofocus required')|raw }}
+
+        {{ input.render('password', 'Contraseña', 'password', '', errors.password ?? '',
+            'autocomplete="current-password" required')|raw }}
+
+        <label class="remember-row">
+            <input type="checkbox" name="remember_me" value="1"> Mantener sesión iniciada
+        </label>
+
+        {{ btn.render('Iniciar sesión', 'primary', 'submit')|raw }}
+    </form>
+
+    <a href="/forgot-password" class="link">¿Olvidaste tu contraseña?</a>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Validación inline — login ────────────────────────────────────────── */
+(function () {
+    const form = document.querySelector('[data-validate]');
+    if (!form) return;
+
+    const rules = {
+        email:    { required: true, email: true,  label: 'Correo electrónico' },
+        password: { required: true,               label: 'Contraseña' },
+    };
+
+    function showError(name, msg) {
+        const field = form.querySelector(`[name="${name}"]`);
+        if (!field) return;
+        const wrap = field.closest('.field');
+        wrap?.classList.add('field-error');
+        field.classList.add('input-invalid');
+        field.setAttribute('aria-invalid', 'true');
+        let hint = document.getElementById(`err-${name}`);
+        if (!hint) {
+            hint = document.createElement('span');
+            hint.id = `err-${name}`;
+            hint.className = 'field-hint field-hint-error';
+            field.after(hint);
+        }
+        hint.textContent = msg;
+        field.setAttribute('aria-describedby', `err-${name}`);
+    }
+
+    function clearError(name) {
+        const field = form.querySelector(`[name="${name}"]`);
+        if (!field) return;
+        field.closest('.field')?.classList.remove('field-error');
+        field.classList.remove('input-invalid');
+        field.removeAttribute('aria-invalid');
+        document.getElementById(`err-${name}`)?.remove();
+    }
+
+    function validate() {
+        let valid = true;
+        for (const [name, rule] of Object.entries(rules)) {
+            const field = form.querySelector(`[name="${name}"]`);
+            const value = field?.value.trim() ?? '';
+            if (rule.required && value === '') {
+                showError(name, `${rule.label} es requerido.`);
+                valid = false;
+            } else if (rule.email && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                showError(name, 'Ingresa un correo válido.');
+                valid = false;
+            } else {
+                clearError(name);
+            }
+        }
+        return valid;
+    }
+
+    // Limpiar error al corregir el campo
+    Object.keys(rules).forEach(name => {
+        form.querySelector(`[name="${name}"]`)?.addEventListener('input', () => clearError(name));
+    });
+
+    form.addEventListener('submit', e => {
+        if (!validate()) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+        }
+    });
+})();
+</script>
+{% endblock %}

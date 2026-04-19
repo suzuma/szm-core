@@ -1,0 +1,23 @@
+{% macro render(title, description = '', cta_label = '', cta_url = '') %}
+{#
+    Estado vacío para listas, tablas y secciones sin datos.
+    Ejemplo:
+        {% import 'components/empty_state.twig' as empty %}
+        {{ empty.render('Sin usuarios', 'No hay usuarios registrados aún.', 'Crear usuario', '/users/create')|raw }}
+#}
+<div class="empty-state">
+    <div class="empty-state-icon">
+        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3"/>
+            <path d="M22 32h20M32 22v20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+    </div>
+    <h3 class="empty-state-title">{{ title }}</h3>
+    {% if description %}
+        <p class="empty-state-desc">{{ description }}</p>
+    {% endif %}
+    {% if cta_label and cta_url %}
+        <a href="{{ cta_url }}" class="btn btn-primary">{{ cta_label }}</a>
+    {% endif %}
+</div>
+{% endmacro %}

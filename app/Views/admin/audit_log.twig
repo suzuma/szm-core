@@ -1,0 +1,171 @@
+{% extends 'layouts/app.twig' %}
+{% import 'components/badge.twig' as badge %}
+{% import 'components/empty_state.twig' as empty %}
+
+{% block title %}Audit Log — {{ app_name }}{% endblock %}
+{% block page_title %}Audit Log{% endblock %}
+
+{% block breadcrumbs %}
+<nav class="breadcrumbs" aria-label="Ruta de navegación">
+    <ol>
+        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+        <li class="breadcrumb-item breadcrumb-active">Audit Log</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+
+{# ── Filtros ───────────────────────────────────────────────────────────── #}
+<div class="card" style="margin-bottom:1.25rem">
+    <form method="GET" action="/admin/audit-log" class="audit-filters">
+        <div class="field" style="flex:1;min-width:180px">
+            <label for="f-action">Acción</label>
+            <select id="f-action" name="action" class="input">
+                <option value="">Todas</option>
+                {% for act in actions %}
+                    <option value="{{ act }}" {{ filter_action == act ? 'selected' : '' }}>{{ act }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field" style="width:140px">
+            <label for="f-user">User ID</label>
+            <input id="f-user" type="number" name="user_id" class="input"
+                   value="{{ filter_user_id }}" min="1" placeholder="—">
+        </div>
+        <button type="submit" class="btn" style="align-self:flex-end;width:auto;padding:.6rem 1.25rem">Filtrar</button>
+        {% if filter_action or filter_user_id %}
+            <a href="/admin/audit-log" class="btn-outline" style="align-self:flex-end;padding:.55rem 1rem;text-decoration:none">Limpiar</a>
+        {% endif %}
+    </form>
+</div>
+
+{# ── Tabla ─────────────────────────────────────────────────────────────── #}
+{% if logs is empty %}
+    {{ empty.render('Sin registros', 'No hay entradas que coincidan con los filtros aplicados.')|raw }}
+{% else %}
+<div class="card" style="padding:0;overflow:hidden">
+    <div style="overflow-x:auto">
+        <table class="audit-table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Usuario</th>
+                    <th>Acción</th>
+                    <th>Entidad</th>
+                    <th>IP</th>
+                    <th>Detalles</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td class="audit-date" title="{{ log.created_at }}">
+                        {{ log.created_at ? log.created_at|date('d/m/Y H:i:s') : '—' }}
+                    </td>
+                    <td>
+                        {% if log.user %}
+                            {{ log.user.name }}<br>
+                            <small style="color:var(--muted)">#{{ log.user_id }}</small>
+                        {% else %}
+                            <span style="color:var(--muted)">Sistema</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% set variant = 'default' %}
+                        {% if 'login' in log.action %}{% set variant = 'success' %}
+                        {% elseif 'failed' in log.action or 'locked' in log.action %}{% set variant = 'danger' %}
+                        {% elseif 'delete' in log.action %}{% set variant = 'warning' %}
+                        {% elseif 'created' in log.action %}{% set variant = 'primary' %}
+                        {% endif %}
+                        {{ badge.render(log.action, variant)|raw }}
+                    </td>
+                    <td>
+                        {% if log.entity_type %}
+                            <span style="font-size:.75rem;color:var(--muted)">
+                                {{ log.entity_type|split('\\')|last }}
+                                {% if log.entity_id %}#{{ log.entity_id }}{% endif %}
+                            </span>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td style="font-size:.8125rem;font-family:monospace">{{ log.ip ?? '—' }}</td>
+                    <td>
+                        {% if log.old_values or log.new_values %}
+                        <button type="button" class="audit-detail-btn"
+                                data-old="{{ log.old_values ? log.old_values|json_encode : '{}' }}"
+                                data-new="{{ log.new_values ? log.new_values|json_encode : '{}' }}">
+                            Ver diff
+                        </button>
+                        {% else %}—{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# ── Paginación ──────────────────────────────────────────────────────── #}
+{% if total_pages > 1 %}
+<div class="audit-pagination">
+    {% if page > 1 %}
+        <a href="?page={{ page - 1 }}&action={{ filter_action }}&user_id={{ filter_user_id }}" class="btn-outline">← Anterior</a>
+    {% endif %}
+    <span style="color:var(--muted);font-size:.875rem">Página {{ page }} de {{ total_pages }} ({{ total }} registros)</span>
+    {% if page < total_pages %}
+        <a href="?page={{ page + 1 }}&action={{ filter_action }}&user_id={{ filter_user_id }}" class="btn-outline">Siguiente →</a>
+    {% endif %}
+</div>
+{% else %}
+<p style="text-align:right;color:var(--muted);font-size:.8125rem;margin-top:.75rem">{{ total }} registro{{ total != 1 ? 's' : '' }}</p>
+{% endif %}
+
+{% endif %}
+
+{# ── Modal de diff ─────────────────────────────────────────────────────── #}
+<div id="diff-modal" class="session-modal" hidden role="dialog" aria-modal="true">
+    <div class="session-modal-box" style="max-width:540px">
+        <h3 style="margin-bottom:1rem">Detalle del cambio</h3>
+        <div class="diff-grid">
+            <div>
+                <p style="font-size:.75rem;font-weight:700;color:var(--muted);margin-bottom:.5rem">ANTERIOR</p>
+                <pre id="diff-old" class="diff-pre diff-old"></pre>
+            </div>
+            <div>
+                <p style="font-size:.75rem;font-weight:700;color:var(--muted);margin-bottom:.5rem">NUEVO</p>
+                <pre id="diff-new" class="diff-pre diff-new"></pre>
+            </div>
+        </div>
+        <div style="margin-top:1.25rem;text-align:right">
+            <button type="button" id="diff-close" class="btn" style="width:auto;padding:.55rem 1.25rem">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Audit diff modal ─────────────────────────────────────────────── */
+const modal    = document.getElementById('diff-modal');
+const oldPre   = document.getElementById('diff-old');
+const newPre   = document.getElementById('diff-new');
+const closeBtn = document.getElementById('diff-close');
+
+document.querySelectorAll('.audit-detail-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        try {
+            oldPre.textContent = JSON.stringify(JSON.parse(btn.dataset.old), null, 2);
+            newPre.textContent = JSON.stringify(JSON.parse(btn.dataset.new), null, 2);
+        } catch {
+            oldPre.textContent = btn.dataset.old;
+            newPre.textContent = btn.dataset.new;
+        }
+        modal.hidden = false;
+    });
+});
+
+closeBtn?.addEventListener('click', () => { modal.hidden = true; });
+modal?.addEventListener('click', e => { if (e.target === modal) modal.hidden = true; });
+</script>
+{% endblock %}

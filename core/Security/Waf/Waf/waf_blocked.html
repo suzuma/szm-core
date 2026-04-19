@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Acceso Restringido</title>
+    <style>
+        :root {
+            --text-main: #2d3436;
+            --text-muted: #636e72;
+            --accent: #d63031;
+            --bg: #ffffff;
+            --border: #f1f2f6;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+        }
+
+        .container {
+            max-width: 380px;
+            padding: 40px;
+            position: relative;
+        }
+
+        .brand-logo {
+            max-width: 300px;
+            height: auto;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .status-line {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .status-dot {
+            height: 8px;
+            width: 8px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .status-dot::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+            opacity: 0.4;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 0.4;
+            }
+            100% {
+                transform: scale(3);
+                opacity: 0;
+            }
+        }
+
+        h1 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin: 0 0 12px 0;
+            letter-spacing: -0.02em;
+        }
+
+        p {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+            line-height: 1.5;
+        }
+
+        .meta {
+            font-family: "SF Mono", "Roboto Mono", monospace;
+            font-size: 0.75rem;
+            border-top: 1px solid var(--border);
+            padding-top: 24px;
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 8px 16px;
+            margin-bottom: 40px;
+        }
+
+        .meta strong {
+            color: var(--text-main);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .meta span {
+            color: var(--text-muted);
+        }
+
+        /* Estilo del Pie de Página */
+        .footer {
+            font-size: 0.7rem;
+            color: #b2bec3;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            border-top: 1px solid transparent; /* Para alineación */
+        }
+
+        .footer b {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <img src="https://profitsportclub.com/public/assets/AegisWaf_logo.png" alt="Logo" class="brand-logo">
+
+    <div class="status-line">
+        <div class="status-dot"></div>
+        <span style="font-size: 0.65rem; text-transform: uppercase; color: var(--accent); font-weight: 700; letter-spacing: 0.1em;">Security System Active</span>
+    </div>
+
+    <h1>Acceso Restringido</h1>
+    <p>Tu conexión ha sido limitada automáticamente por seguridad. Si eres un usuario legítimo, intenta acceder más
+        tarde.</p>
+
+    <div class="meta">
+        <strong>IP</strong> <span>[[IP]]</span>
+        <strong>ID</strong> <span>[[REFERENCE_ID]]</span>
+        <strong>EXP</strong> <span>[[EXPIRES]]</span>
+    </div>
+
+    <div class="footer">
+        By: <b>SuZuMa</b>
+    </div>
+</div>
+</body>
+</html>

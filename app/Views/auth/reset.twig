@@ -1,0 +1,125 @@
+{% extends 'layouts/auth.twig' %}
+{% import 'components/alert.twig' as alert %}
+{% import 'components/input.twig' as input %}
+{% import 'components/button.twig' as btn %}
+
+{% block title %}Nueva contraseña — {{ app_name }}{% endblock %}
+
+{% block content %}
+
+    <h1 class="card-title">Nueva contraseña</h1>
+    <p class="card-subtitle">Mínimo 8 caracteres</p>
+
+    {% if has_flash('error') %}{{ alert.render('error', flash('error'))|raw }}{% endif %}
+
+    <form method="POST" action="/reset-password" novalidate data-validate>
+        {{ csrf_field()|raw }}
+        <input type="hidden" name="token" value="{{ token|e }}">
+
+        {{ input.render('password', 'Nueva contraseña', 'password', '', errors.password ?? '',
+            'autocomplete="new-password" autofocus required minlength="8"')|raw }}
+
+        {# Medidor de fortaleza de contraseña #}
+        <div class="strength-wrap" id="strength-wrap" hidden>
+            <div class="strength-bar"><div class="strength-fill" id="strength-fill"></div></div>
+            <span class="strength-label" id="strength-label"></span>
+        </div>
+
+        {{ input.render('confirm', 'Confirmar contraseña', 'password', '', errors.confirm ?? '',
+            'autocomplete="new-password" required minlength="8"')|raw }}
+
+        {{ btn.render('Actualizar contraseña', 'primary', 'submit')|raw }}
+    </form>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Fortaleza de contraseña ─────────────────────────────────────────── */
+(function () {
+    const pwdField  = document.getElementById('field-password');
+    const wrap      = document.getElementById('strength-wrap');
+    const fill      = document.getElementById('strength-fill');
+    const label     = document.getElementById('strength-label');
+
+    const levels = [
+        { min: 0,  max: 25,  color: '#dc2626', text: 'Muy débil' },
+        { min: 26, max: 50,  color: '#f97316', text: 'Débil'     },
+        { min: 51, max: 75,  color: '#eab308', text: 'Regular'   },
+        { min: 76, max: 100, color: '#16a34a', text: 'Segura'    },
+    ];
+
+    function score(pwd) {
+        let s = 0;
+        if (pwd.length >= 8)  s += 25;
+        if (pwd.length >= 12) s += 15;
+        if (/[A-Z]/.test(pwd)) s += 20;
+        if (/[0-9]/.test(pwd)) s += 20;
+        if (/[^A-Za-z0-9]/.test(pwd)) s += 20;
+        return Math.min(s, 100);
+    }
+
+    pwdField?.addEventListener('input', () => {
+        const pwd = pwdField.value;
+        if (!pwd) { wrap.hidden = true; return; }
+        wrap.hidden = false;
+        const s = score(pwd);
+        const lvl = levels.find(l => s >= l.min && s <= l.max) ?? levels[0];
+        fill.style.width    = s + '%';
+        fill.style.background = lvl.color;
+        label.textContent   = lvl.text;
+        label.style.color   = lvl.color;
+    });
+
+/* ── Validación inline — reset ───────────────────────────────────────── */
+    const form = document.querySelector('[data-validate]');
+    if (!form) return;
+
+    function showError(name, msg) {
+        const field = form.querySelector(`[name="${name}"]`);
+        if (!field) return;
+        field.closest('.field')?.classList.add('field-error');
+        field.classList.add('input-invalid');
+        let hint = document.getElementById(`err-${name}`);
+        if (!hint) {
+            hint = document.createElement('span');
+            hint.id = `err-${name}`;
+            hint.className = 'field-hint field-hint-error';
+            field.after(hint);
+        }
+        hint.textContent = msg;
+    }
+
+    function clearError(name) {
+        const field = form.querySelector(`[name="${name}"]`);
+        if (!field) return;
+        field.closest('.field')?.classList.remove('field-error');
+        field.classList.remove('input-invalid');
+        document.getElementById(`err-${name}`)?.remove();
+    }
+
+    ['password', 'confirm'].forEach(n =>
+        form.querySelector(`[name="${n}"]`)?.addEventListener('input', () => clearError(n))
+    );
+
+    form.addEventListener('submit', e => {
+        let valid = true;
+        const pwd     = form.querySelector('[name="password"]')?.value ?? '';
+        const confirm = form.querySelector('[name="confirm"]')?.value  ?? '';
+
+        if (pwd.length < 8) {
+            showError('password', 'Mínimo 8 caracteres.');
+            valid = false;
+        }
+        if (confirm === '') {
+            showError('confirm', 'Confirma tu contraseña.');
+            valid = false;
+        } else if (pwd !== confirm) {
+            showError('confirm', 'Las contraseñas no coinciden.');
+            valid = false;
+        }
+        if (!valid) { e.preventDefault(); e.stopImmediatePropagation(); }
+    });
+})();
+</script>
+{% endblock %}
