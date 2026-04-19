@@ -204,11 +204,17 @@ final class Application
             new PhrouteResolver()
         );
 
+        // Soporte para _method override (PUT, PATCH, DELETE vía POST)
+        $method = $_SERVER['REQUEST_METHOD'];
+        if ($method === 'POST') {
+            $override = strtoupper((string) ($_POST['_method'] ?? ''));
+            if (in_array($override, ['PUT', 'PATCH', 'DELETE'], true)) {
+                $method = $override;
+            }
+        }
+
         try {
-            echo $dispatcher->dispatch(
-                $_SERVER['REQUEST_METHOD'],
-                $this->uri
-            );
+            echo $dispatcher->dispatch($method, $this->uri);
         } catch (Throwable $e) {
             $this->handleDispatchError($e);
         }

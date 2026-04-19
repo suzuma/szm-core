@@ -73,10 +73,11 @@
                     </td>
                     <td>
                         {% set variant = 'default' %}
-                        {% if 'login' in log.action %}{% set variant = 'success' %}
-                        {% elseif 'failed' in log.action or 'locked' in log.action %}{% set variant = 'danger' %}
-                        {% elseif 'delete' in log.action %}{% set variant = 'warning' %}
-                        {% elseif 'created' in log.action %}{% set variant = 'primary' %}
+                        {% if 'login' in log.action or 'activated' in log.action %}{% set variant = 'success' %}
+                        {% elseif 'failed' in log.action or 'locked' in log.action or 'deactivated' in log.action %}{% set variant = 'danger' %}
+                        {% elseif 'deleted' in log.action %}{% set variant = 'warning' %}
+                        {% elseif 'created' in log.action or 'password_changed' in log.action %}{% set variant = 'primary' %}
+                        {% elseif 'updated' in log.action %}{% set variant = 'info' %}
                         {% endif %}
                         {{ badge.render(log.action, variant)|raw }}
                     </td>

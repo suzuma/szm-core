@@ -22,10 +22,11 @@
     --border:        #d1dde8;
     --text:          #0D3B66;
     --muted:         #5a7fa8;
-    --sidebar-w:     240px;
-    --header-h:      60px;
-    --radius:        10px;
-    --shadow:        0 2px 12px rgba(13, 59, 102, .08);
+    --sidebar-w:           240px;
+    --sidebar-collapsed-w: 64px;
+    --header-h:            60px;
+    --radius:              10px;
+    --shadow:              0 2px 12px rgba(13, 59, 102, .08);
 }
 
 /* ── Base ────────────────────────────────────────────────────────────────── */
@@ -57,15 +58,21 @@ a:hover { color: var(--sky-dk); text-decoration: underline; }
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
-    padding: 1.5rem 0;
+    padding: 1.5rem 0 1rem;
+    transition: width .25s ease;
+    overflow: hidden;
+    position: relative;
 }
 
 /* ── Logo en sidebar ─────────────────────────────────────────────────────── */
 .sidebar-brand {
-    margin: 0 .75rem 1rem;
-    padding: .875rem 1rem;
+    margin: 0 .75rem .5rem;
+    padding: .75rem 1rem;
     background: #ffffff;
     border-radius: 10px;
+    overflow: hidden;
+    transition: padding .25s, margin .25s;
+    flex-shrink: 0;
 }
 
 .sidebar-brand img {
@@ -74,10 +81,37 @@ a:hover { color: var(--sky-dk); text-decoration: underline; }
     max-width: 160px;
     height: auto;
     margin: 0 auto;
+    transition: opacity .2s;
+}
+
+/* ── Botón de colapso (desktop) ──────────────────────────────────────────── */
+.sidebar-collapse-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    background: rgba(255,255,255,.1);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    margin: 0 auto .75rem;
+    color: rgba(255,255,255,.7);
+    flex-shrink: 0;
+    transition: background .15s, color .15s, transform .25s;
+}
+
+.sidebar-collapse-btn:hover { background: rgba(0,191,255,.25); color: #fff; }
+
+.sidebar-collapse-btn svg {
+    width: 1rem;
+    height: 1rem;
+    transition: transform .25s ease;
+    flex-shrink: 0;
 }
 
 /* ── Nav ─────────────────────────────────────────────────────────────────── */
-.nav { list-style: none; padding: 0 .75rem; flex: 1; }
+.nav { list-style: none; padding: 0 .75rem; flex: 1; overflow: hidden; }
 
 .nav-item a {
     display: flex;
@@ -90,6 +124,9 @@ a:hover { color: var(--sky-dk); text-decoration: underline; }
     font-weight: 500;
     transition: background .15s, color .15s;
     text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    position: relative;
 }
 
 .nav-item a:hover,
@@ -105,12 +142,27 @@ a:hover { color: var(--sky-dk); text-decoration: underline; }
     font-weight: 600;
 }
 
+/* Icono SVG en nav */
+.nav-icon {
+    width: 1.125rem;
+    height: 1.125rem;
+    flex-shrink: 0;
+}
+
+/* Texto de la etiqueta del nav */
+.nav-label {
+    transition: opacity .15s, width .25s;
+    overflow: hidden;
+}
+
 /* ── Sidebar footer ──────────────────────────────────────────────────────── */
 .sidebar-footer {
-    padding: 1rem 1.25rem 0;
+    padding: .875rem 1.25rem 0;
     border-top: 1px solid rgba(255,255,255,.1);
     font-size: .8125rem;
     color: rgba(255,255,255,.55);
+    overflow: hidden;
+    flex-shrink: 0;
 }
 
 .sidebar-footer .user-name {
@@ -118,6 +170,9 @@ a:hover { color: var(--sky-dk); text-decoration: underline; }
     color: #ffffff;
     display: block;
     margin-bottom: .2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .sidebar-footer .user-role {
@@ -126,7 +181,71 @@ a:hover { color: var(--sky-dk); text-decoration: underline; }
     text-transform: capitalize;
     font-size: .75rem;
     color: var(--sky);
+    white-space: nowrap;
 }
+
+/* ── Estado colapsado (desktop) ──────────────────────────────────────────── */
+.sidebar.collapsed {
+    width: var(--sidebar-collapsed-w);
+}
+
+.sidebar.collapsed .sidebar-brand {
+    padding: .5rem;
+    margin: 0 .5rem .5rem;
+}
+
+.sidebar.collapsed .sidebar-brand img {
+    opacity: 0;
+    pointer-events: none;
+    width: 0;
+    max-width: 0;
+    height: 0;
+}
+
+.sidebar.collapsed .nav { padding: 0 .5rem; }
+
+.sidebar.collapsed .nav-item a {
+    justify-content: center;
+    gap: 0;
+    padding: .75rem;
+}
+
+.sidebar.collapsed .nav-label { width: 0; opacity: 0; }
+
+/* Tooltip en estado colapsado */
+.sidebar.collapsed .nav-item a[data-tooltip] {
+    position: relative;
+}
+
+.sidebar.collapsed .nav-item a[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: calc(100% + .5rem);
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--navy-dk);
+    color: #fff;
+    font-size: .75rem;
+    font-weight: 500;
+    padding: .3rem .625rem;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .15s;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0,0,0,.2);
+}
+
+.sidebar.collapsed .nav-item a[data-tooltip]:hover::after { opacity: 1; }
+
+.sidebar.collapsed .sidebar-collapse-btn svg { transform: rotate(180deg); }
+
+.sidebar.collapsed .sidebar-footer { padding: .875rem .5rem 0; }
+
+.sidebar.collapsed .sidebar-footer-info { display: none; }
+
+.sidebar.collapsed .logout-btn { display: none; }
 
 /* ── Main ────────────────────────────────────────────────────────────────── */
 .main {
@@ -527,6 +646,11 @@ a:hover { color: var(--sky-dk); text-decoration: underline; }
     backdrop-filter: blur(2px);
 }
 
+/* ── Botón collapse — oculto en mobile (usa hamburger) ───────────────────── */
+@media (max-width: 768px) {
+    .sidebar-collapse-btn { display: none; }
+}
+
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
     .sidebar {
@@ -535,7 +659,15 @@ a:hover { color: var(--sky-dk); text-decoration: underline; }
         z-index: 50;
         transform: translateX(-100%);
         transition: transform .25s ease;
+        width: var(--sidebar-w) !important; /* siempre ancho completo en mobile */
     }
+
+    /* En mobile restaurar labels y brand aunque esté colapsado */
+    .sidebar .nav-label { width: auto !important; opacity: 1 !important; }
+    .sidebar .nav-item a { justify-content: flex-start !important; gap: .625rem !important; }
+    .sidebar .sidebar-brand img { opacity: 1 !important; width: 100% !important; max-width: 160px !important; height: auto !important; }
+    .sidebar .sidebar-footer-info { display: block !important; }
+    .sidebar .logout-btn { display: block !important; }
 
     .sidebar.open { transform: translateX(0); }
 
@@ -716,4 +848,27 @@ a:hover { color: var(--sky-dk); text-decoration: underline; }
 @media (max-width: 600px) {
     .diff-grid { grid-template-columns: 1fr; }
     .audit-filters { flex-direction: column; }
+}
+
+/* ── User management — status badges ────────────────────────────────────── */
+.badge-status {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .2rem .6rem;
+    border-radius: 9999px;
+    font-size: .75rem;
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+.badge-active {
+    background: #f0fdf4;
+    color: #15803d;
+}
+
+.badge-inactive {
+    background: #fef3c7;
+    color: #b45309;
 }

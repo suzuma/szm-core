@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Controllers\Admin\AuditController;
 use App\Controllers\AuthController;
 use App\Controllers\HomeController;
+use App\Controllers\UserController;
 use Phroute\Phroute\Route;
 
 /**
@@ -50,3 +51,12 @@ $router->get('/', [HomeController::class, 'index'], [Route::BEFORE => 'auth']);
 
 // ── Administración — solo rol admin ────────────────────────────────────────
 $router->get('/admin/audit-log', [AuditController::class, 'index'], [Route::BEFORE => 'admin']);
+
+// ── Gestión de usuarios (CRUD vía AJAX) ────────────────────────────────────
+$router->group([Route::BEFORE => 'admin'], function ($router): void {
+    $router->get('/admin/users',                   [UserController::class, 'index']);
+    $router->post('/admin/users',                  [UserController::class, 'store']);
+    $router->put('/admin/users/{id:i}',            [UserController::class, 'update']);
+    $router->patch('/admin/users/{id:i}/toggle',   [UserController::class, 'toggleActive']);
+    $router->delete('/admin/users/{id:i}',         [UserController::class, 'destroy']);
+});
