@@ -1,0 +1,50 @@
+{#
+  _sidebar.twig — sidebar del blog: categorías + tags populares.
+  Variables: categories, popular_tags, active_category?, active_tag?
+#}
+<aside class="blog-sidebar" aria-label="Sidebar del blog">
+
+    {# ── Categorías ──────────────────────────────────────────────────── #}
+    <div class="blog-widget">
+        <h3 class="blog-widget__title">Categorías</h3>
+        {% if categories is not empty %}
+        <nav aria-label="Categorías del blog">
+            <ul class="blog-cat-list">
+                <li>
+                    <a href="/blog"
+                       class="blog-cat-link {{ active_category is not defined ? 'blog-cat-link--active' : '' }}">
+                        <span>Todos</span>
+                    </a>
+                </li>
+                {% for cat in categories %}
+                <li>
+                    <a href="/blog/categoria/{{ cat.slug }}"
+                       class="blog-cat-link {{ active_category is defined and active_category.id == cat.id ? 'blog-cat-link--active' : '' }}">
+                        <span>{{ cat.name }}</span>
+                        <span class="blog-cat-count">{{ cat.posts_count }}</span>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </nav>
+        {% else %}
+        <p class="blog-widget__empty">Sin categorías aún.</p>
+        {% endif %}
+    </div>
+
+    {# ── Tags populares ───────────────────────────────────────────────── #}
+    {% if popular_tags is not empty %}
+    <div class="blog-widget">
+        <h3 class="blog-widget__title">Etiquetas populares</h3>
+        <div class="blog-tag-cloud" aria-label="Nube de etiquetas">
+            {% for tag in popular_tags %}
+            <a href="/blog/tag/{{ tag.slug }}"
+               class="blog-tag {{ active_tag is defined and active_tag.id == tag.id ? 'blog-tag--active' : '' }}">
+                #{{ tag.name }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+</aside>

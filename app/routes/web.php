@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Controllers\Admin\AuditController;
 use App\Controllers\AuthController;
+use App\Controllers\Blog\BlogController;
 use App\Controllers\HomeController;
 use App\Controllers\UserController;
 use Phroute\Phroute\Route;
@@ -60,3 +61,9 @@ $router->group([Route::BEFORE => 'admin'], function ($router): void {
     $router->patch('/admin/users/{id:i}/toggle',   [UserController::class, 'toggleActive']);
     $router->delete('/admin/users/{id:i}',         [UserController::class, 'destroy']);
 });
+
+// ── Blog / Noticias (acceso público, sin filtro auth) ─────────────────────
+$router->get('/blog',                          [BlogController::class, 'index']);
+$router->get('/blog/categoria/{slug}',         [BlogController::class, 'byCategory']);
+$router->get('/blog/tag/{slug}',               [BlogController::class, 'byTag']);
+$router->get('/blog/{slug}',                   [BlogController::class, 'show']);
