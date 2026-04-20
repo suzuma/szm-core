@@ -75,6 +75,11 @@ final class TwigFactory
         // Lifetime de sesión en minutos (para modal de timeout en frontend)
         $twig->addGlobal('session_lifetime', (int) ini_get('session.gc_maxlifetime') / 60);
 
+        // Nonce CSP generado por el WAF en cada request.
+        // Úsalo en cada <script> inline o externo: <script nonce="{{ csp_nonce }}">
+        // Sin el nonce, el navegador bloquea el script cuando la CSP está activa.
+        $twig->addGlobal('csp_nonce', $_SERVER['CSP_NONCE'] ?? '');
+
         return $twig;
     }
 }

@@ -34,7 +34,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 /* ── Fortaleza de contraseña ─────────────────────────────────────────── */
 (function () {
     const pwdField  = document.getElementById('field-password');

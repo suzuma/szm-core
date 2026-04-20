@@ -1,0 +1,161 @@
+{% extends 'layouts/app.twig' %}
+{% import 'components/empty_state.twig' as empty %}
+
+{% block title %}IPs Bloqueadas — WAF — {{ app_name }}{% endblock %}
+{% block page_title %}Firewall (WAF){% endblock %}
+
+{% block breadcrumbs %}
+<nav class="breadcrumbs" aria-label="Ruta de navegación">
+    <ol>
+        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="/admin/waf">WAF</a></li>
+        <li class="breadcrumb-item breadcrumb-active">IPs bloqueadas</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+
+{# ── Sub-tabs ──────────────────────────────────────────────────────────────── #}
+<nav class="waf-tabs">
+    <a href="/admin/waf"             class="waf-tab">Resumen</a>
+    <a href="/admin/waf/blocked-ips" class="waf-tab active">IPs bloqueadas</a>
+    <a href="/admin/waf/attack-logs" class="waf-tab">Log de ataques</a>
+</nav>
+
+{# ── Filtros ───────────────────────────────────────────────────────────────── #}
+<div class="card" style="margin-bottom:1.25rem">
+    <form method="GET" action="/admin/waf/blocked-ips" class="waf-filters">
+        <div class="form-group">
+            <label for="f-country">País</label>
+            <select id="f-country" name="country" class="input">
+                <option value="">Todos</option>
+                {% for c in countries %}
+                    <option value="{{ c }}" {{ filter_country == c ? 'selected' : '' }}>{{ c }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="min-width:120px">
+            <label for="f-score">Score mín.</label>
+            <input id="f-score" type="number" name="min_score" class="input"
+                   value="{{ filter_min_score }}" min="0" max="999" placeholder="0">
+        </div>
+        <div class="form-group">
+            <label for="f-status">Estado</label>
+            <select id="f-status" name="status" class="input">
+                <option value="">Todos</option>
+                <option value="active"  {{ filter_status == 'active'  ? 'selected' : '' }}>Activos</option>
+                <option value="expired" {{ filter_status == 'expired' ? 'selected' : '' }}>Expirados</option>
+            </select>
+        </div>
+        <div style="align-self:flex-end;display:flex;gap:.4rem">
+            <button type="submit" class="btn" style="width:auto;padding:.6rem 1.25rem">Filtrar</button>
+            {% if filter_country or filter_min_score or filter_status %}
+                <a href="/admin/waf/blocked-ips" class="btn-outline"
+                   style="align-self:flex-end;padding:.55rem 1rem;text-decoration:none">Limpiar</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+{# ── Tabla ─────────────────────────────────────────────────────────────────── #}
+{% if ips is empty %}
+    {{ empty.render('Sin resultados', 'No hay IPs que coincidan con los filtros aplicados.')|raw }}
+{% else %}
+<div class="card" style="padding:0;overflow:hidden">
+    <div style="overflow-x:auto">
+        <table class="waf-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>IP</th>
+                    <th>Fingerprint</th>
+                    <th>País / ISP</th>
+                    <th>Score</th>
+                    <th>Estado</th>
+                    <th>Expira</th>
+                    <th>Razón</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ip in ips %}
+                <tr>
+                    <td style="color:var(--muted);font-size:.78rem">{{ ip.id }}</td>
+                    <td style="font-family:monospace;font-size:.82rem;white-space:nowrap">{{ ip.ip_address }}</td>
+                    <td style="font-family:monospace;font-size:.75rem;color:var(--muted);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+                        title="{{ ip.fingerprint }}">
+                        {{ ip.fingerprint ? ip.fingerprint|slice(0,12) ~ '…' : '—' }}
+                    </td>
+                    <td>
+                        <div class="waf-geo">
+                            <span class="waf-geo-flag"></span>
+                            <span>{{ ip.country ?? 'Unknown' }}</span>
+                        </div>
+                        <div style="font-size:.73rem;color:var(--muted);margin-top:.1rem">{{ ip.isp ?? '' }}</div>
+                    </td>
+                    <td>
+                        {% set risk_class = ip.risk_score >= 13 ? 'waf-risk-high' : (ip.risk_score >= 6 ? 'waf-risk-medium' : 'waf-risk-low') %}
+                        <span class="waf-risk-pill {{ risk_class }}">{{ ip.risk_score }}</span>
+                    </td>
+                    <td>
+                        {% if ip.is_banned %}
+                            <span class="badge-status badge-inactive">Bloqueada</span>
+                        {% else %}
+                            <span class="badge-status badge-active">Libre</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-size:.8rem;color:var(--muted);white-space:nowrap">
+                        {{ ip.ban_until ? ip.ban_until|date('d/m/Y H:i') : '—' }}
+                    </td>
+                    <td style="max-width:180px">
+                        {% if ip.reason %}
+                            <span class="waf-reason" title="{{ ip.reason }}"
+                                  style="font-size:.78rem;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
+                                {{ ip.reason }}
+                            </span>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td style="white-space:nowrap">
+                        {% if ip.is_banned %}
+                        <form method="POST" action="/admin/waf/unban/{{ ip.id }}"
+                              onsubmit="return confirm('¿Desbloquear {{ ip.ip_address }}?')">
+                            {{ csrf_field()|raw }}
+                            <button type="submit" class="btn-outline"
+                                    style="padding:.3rem .7rem;font-size:.78rem;color:#be123c;border-color:#fecdd3">
+                                Desbloquear
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# ── Paginación ──────────────────────────────────────────────────────────── #}
+{% if total_pages > 1 %}
+<div class="audit-pagination">
+    {% if page > 1 %}
+        <a href="?page={{ page - 1 }}&country={{ filter_country }}&min_score={{ filter_min_score }}&status={{ filter_status }}"
+           class="btn-outline">← Anterior</a>
+    {% endif %}
+    <span style="color:var(--muted);font-size:.875rem">
+        Página {{ page }} de {{ total_pages }} ({{ total }} registros)
+    </span>
+    {% if page < total_pages %}
+        <a href="?page={{ page + 1 }}&country={{ filter_country }}&min_score={{ filter_min_score }}&status={{ filter_status }}"
+           class="btn-outline">Siguiente →</a>
+    {% endif %}
+</div>
+{% else %}
+<p style="text-align:right;color:var(--muted);font-size:.8125rem;margin-top:.75rem">
+    {{ total }} registro{{ total != 1 ? 's' : '' }}
+</p>
+{% endif %}
+
+{% endif %}
+
+{% endblock %}

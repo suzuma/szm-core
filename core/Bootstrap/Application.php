@@ -6,6 +6,7 @@ namespace Core\Bootstrap;
 
 use Core\Security\CsrfToken;
 use Core\Security\Session;
+use Core\Security\Waf\Identity\IpResolver;
 use Core\Security\Waf\Waf;
 use Core\Http\StaticFileHandler;
 use Core\Http\Router;
@@ -91,12 +92,11 @@ final class Application
             ServicesContainer::getConfig('app.timezone', 'UTC')
         );
 
-        ini_set('memory_limit', '-1');
+        ini_set('memory_limit', $isDev ? '-1' : '256M');
         ini_set('log_errors',   '1');
         ini_set('error_log',    $logPath . '/php-error.log');
 
-        //error_reporting($isDev ? E_ALL & ~E_DEPRECATED : 0);
-        error_reporting(E_ALL & ~E_DEPRECATED);
+        error_reporting($isDev ? E_ALL & ~E_DEPRECATED : E_ERROR | E_WARNING | E_PARSE);
         ini_set('display_errors', $isDev ? '1' : '0');
     }
 
@@ -227,12 +227,10 @@ final class Application
     /** Resuelve la IP real del cliente respetando proxies de confianza */
     private function resolveClientIp(): string
     {
-        foreach (['HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'] as $key) {
-            if (!empty($_SERVER[$key])) {
-                return trim(explode(',', $_SERVER[$key])[0]);
-            }
-        }
-        return '0.0.0.0';
+        // Delegamos en IpResolver — fuente de verdad única compartida con el WAF.
+        // Antes esta implementación carecía de FILTER_VALIDATE_IP y de la lógica
+        // de trusted proxies, permitiendo que X-Forwarded-For spoofease los logs.
+        return IpResolver::resolve();
     }
 
     /** Loguea el error de despacho y responde con 404 */

@@ -873,24 +873,296 @@ a:hover { color: var(--sky-dk); text-decoration: underline; }
     color: #b45309;
 }
 
-/* ── Draft auto-save toast (admin blog form) ─────────────────────────────── */
-.draft-saved-toast {
-    position: fixed;
-    bottom: 1.5rem;
-    left: 50%;
-    transform: translateX(-50%) translateY(8px);
-    background: #1e293b;
-    color: #fff;
-    font-size: .8125rem;
-    padding: .4rem 1.1rem;
+/* ==========================================================================
+   WAF Dashboard
+   ========================================================================== */
+
+/* ── KPI grid ────────────────────────────────────────────────────────────── */
+.waf-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+/* ── Rule distribution bars ──────────────────────────────────────────────── */
+.waf-rule-list { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
+
+.waf-rule-item { display: flex; flex-direction: column; gap: .2rem; }
+
+.waf-rule-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: .8rem;
+    font-weight: 500;
+}
+
+.waf-rule-track {
+    height: 6px;
     border-radius: 9999px;
-    opacity: 0;
+    background: var(--border);
+    overflow: hidden;
+}
+
+.waf-rule-bar {
+    height: 100%;
+    border-radius: 9999px;
+    background: var(--sky);
+    transition: width .4s ease;
+}
+
+/* ── SVG Sparkline / Timeline ────────────────────────────────────────────── */
+.waf-sparkline-wrap {
+    width: 100%;
+    overflow: hidden;
+    border-radius: var(--radius);
+}
+
+.waf-sparkline {
+    width: 100%;
+    display: block;
+}
+
+/* ── Heatmap 24h ─────────────────────────────────────────────────────────── */
+.waf-heatmap {
+    display: grid;
+    grid-template-columns: repeat(24, 1fr);
+    gap: 3px;
+    margin-top: .5rem;
+}
+
+.waf-heatmap-cell {
+    aspect-ratio: 1;
+    border-radius: 3px;
+    background: var(--border);
+    transition: background .2s;
+    cursor: default;
+    position: relative;
+}
+
+.waf-heatmap-cell[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--navy);
+    color: #fff;
+    font-size: .7rem;
+    padding: .2rem .4rem;
+    border-radius: 4px;
+    white-space: nowrap;
     pointer-events: none;
-    transition: opacity .25s, transform .25s;
-    z-index: 600;
+    z-index: 10;
+}
+
+.waf-heat-0  { background: var(--border); }
+.waf-heat-1  { background: #bae6fd; }
+.waf-heat-2  { background: #7dd3fc; }
+.waf-heat-3  { background: #38bdf8; }
+.waf-heat-4  { background: #0ea5e9; }
+.waf-heat-5  { background: #f97316; }
+.waf-heat-6  { background: #ef4444; }
+
+/* ── Risk score pill ─────────────────────────────────────────────────────── */
+.waf-risk-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.4rem;
+    padding: .2rem .55rem;
+    border-radius: 9999px;
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+}
+
+.waf-risk-low    { background: #f0fdf4; color: #15803d; }
+.waf-risk-medium { background: #fefce8; color: #a16207; }
+.waf-risk-high   { background: #fff1f2; color: #be123c; }
+
+/* ── Payload preview ─────────────────────────────────────────────────────── */
+.waf-payload-pre {
+    font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+    font-size: .78rem;
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: .5rem .75rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 200px;
+    overflow-y: auto;
+    color: #334155;
+}
+
+/* ── Geo flag ────────────────────────────────────────────────────────────── */
+.waf-geo {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: .82rem;
+}
+
+.waf-geo-flag {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+/* ── WAF data table ──────────────────────────────────────────────────────── */
+.waf-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .85rem;
+}
+
+.waf-table th {
+    text-align: left;
+    padding: .6rem .75rem;
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 2px solid var(--border);
     white-space: nowrap;
 }
-.draft-saved-toast.show {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
+
+.waf-table td {
+    padding: .65rem .75rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+}
+
+.waf-table tbody tr:last-child td { border-bottom: none; }
+
+.waf-table tbody tr:hover td { background: var(--sky-lt); }
+
+/* ── Rule badge ──────────────────────────────────────────────────────────── */
+.waf-rule-badge {
+    display: inline-block;
+    padding: .18rem .5rem;
+    border-radius: 5px;
+    font-size: .72rem;
+    font-weight: 600;
+    background: #eff6ff;
+    color: #1d4ed8;
+    white-space: nowrap;
+}
+
+/* ── Section tabs (sub-navigation) ──────────────────────────────────────── */
+.waf-tabs {
+    display: flex;
+    gap: .25rem;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 1.5rem;
+}
+
+.waf-tab {
+    padding: .55rem 1rem;
+    font-size: .85rem;
+    font-weight: 500;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color .15s, border-color .15s;
+    text-decoration: none;
+}
+
+.waf-tab:hover { color: var(--sky-dk); text-decoration: none; }
+
+.waf-tab.active {
+    color: var(--navy);
+    border-bottom-color: var(--sky);
+    font-weight: 600;
+}
+
+/* ── Filters bar ─────────────────────────────────────────────────────────── */
+.waf-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    align-items: flex-end;
+    margin-bottom: 1.25rem;
+}
+
+.waf-filters .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    min-width: 140px;
+}
+
+.waf-filters label {
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+/* ── Payload modal ───────────────────────────────────────────────────────── */
+.waf-modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(13, 59, 102, .45);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+}
+
+.waf-modal-backdrop.open { display: flex; }
+
+.waf-modal {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 32px rgba(13,59,102,.18);
+    padding: 1.5rem;
+    width: min(560px, 95vw);
+    max-height: 80vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.waf-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.waf-modal-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--navy);
+}
+
+.waf-modal-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 1.25rem;
+    line-height: 1;
+    padding: .25rem;
+    border-radius: 4px;
+    transition: color .15s;
+}
+
+.waf-modal-close:hover { color: var(--navy); }
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .waf-grid { grid-template-columns: 1fr 1fr; }
+    .waf-heatmap { grid-template-columns: repeat(12, 1fr); }
+    .waf-filters { flex-direction: column; }
+    .waf-table th:nth-child(n+5),
+    .waf-table td:nth-child(n+5) { display: none; }
+}
+
+@media (max-width: 480px) {
+    .waf-grid { grid-template-columns: 1fr; }
+    .waf-tabs { overflow-x: auto; }
 }

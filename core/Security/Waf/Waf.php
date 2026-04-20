@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Core\Security\Waf;
 
 use Illuminate\Database\Capsule\Manager as Capsule;
@@ -18,11 +20,11 @@ use Dotenv\Dotenv;
 class Waf
 {
     // Importamos los Traits
-    use \Core\Security\Waf\Waf\SecurityDetectionTrait;
-    use \Core\Security\Waf\Waf\AiProtectionTrait;
-    use \Core\Security\Waf\Waf\BehaviorAnalysisTrait;
-    use \Core\Security\Waf\Waf\IpManagementTrait;
-    use \Core\Security\Waf\Waf\HttpHandlerTrait;
+    use \Core\Security\Waf\Detection\SecurityDetectionTrait;
+    use \Core\Security\Waf\Behavior\AiProtectionTrait;
+    use \Core\Security\Waf\Behavior\BehaviorAnalysisTrait;
+    use \Core\Security\Waf\Identity\IpManagementTrait;
+    use \Core\Security\Waf\Http\HttpHandlerTrait;
 
 // region VARIABLES INTERNAS
     protected string $ip;
@@ -335,7 +337,7 @@ class Waf
         header('HTTP/1.1 403 Forbidden');
         header('Content-Type: text/html; charset=UTF-8');
 
-        $filePath = __DIR__ . '/Waf/waf_blocked.html';
+        $filePath = __DIR__ . '/templates/waf_blocked.html';
 
         if (!file_exists($filePath)) {
             error_log("[WAF] Plantilla waf_blocked.html no encontrada en: $filePath");
@@ -676,29 +678,45 @@ class Waf
 
     protected function notifyIntrusion(string $ip, string $rule, string $payload, array $geo): void
     {
-        $token = $_ENV['TELEGRAM_BOT_TOKEN'];  // ✅ Usar variable de entorno (pendiente punto 1)
-        $chatId = $_ENV['TELEGRAM_CHAT_ID'];
+        $token  = $_ENV['TELEGRAM_BOT_TOKEN'] ?? '';
+        $chatId = $_ENV['TELEGRAM_CHAT_ID']   ?? '';
 
         if (empty($token) || empty($chatId)) {
-            error_log("[WAF] Telegram no configurado: faltan variables en .env");
+            error_log("[WAF] Telegram no configurado: faltan TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID en .env");
             return;
         }
 
-
-        $mensaje = "🚨 *INTENTO DE INTRUSIÓN DETECTADO* 🚨\n\n";
+        $mensaje  = "🚨 *INTENTO DE INTRUSIÓN DETECTADO* 🚨\n\n";
         $mensaje .= "👤 *IP:* `{$ip}`\n";
         $mensaje .= "🌍 *Origen:* {$geo['city']}, {$geo['country']}\n";
         $mensaje .= "🛡️ *Regla:* `{$rule}`\n";
-        $mensaje .= "📥 *Payload:* `{$payload}`\n";
+        $mensaje .= "📥 *Payload:* `" . mb_substr($payload, 0, 200) . "`\n";
         $mensaje .= "🕒 *Hora:* " . date('d/m/Y H:i:s') . "\n\n";
         $mensaje .= "⚠️ _La IP ha sido bloqueada automáticamente._";
 
-        $url = "https://api.telegram.org/bot{$token}/sendMessage?chat_id={$chatId}&text="
-            . urlencode($mensaje) . "&parse_mode=Markdown";
+        // POST con JSON: payload no queda expuesto en URL ni en logs de proxy.
+        // Evita además el límite de 2048 chars de las URLs en GET.
+        $body = json_encode([
+            'chat_id'    => $chatId,
+            'text'       => $mensaje,
+            'parse_mode' => 'Markdown',
+        ]);
 
-        $ctx = stream_context_create(['http' => ['timeout' => 3]]);
-        @file_get_contents($url, false, $ctx);
+        $ctx = stream_context_create([
+            'http' => [
+                'method'  => 'POST',
+                'timeout' => 3,
+                'header'  => "Content-Type: application/json\r\nContent-Length: " . strlen($body),
+                'content' => $body,
+            ],
+        ]);
 
+        $url    = "https://api.telegram.org/bot{$token}/sendMessage";
+        $result = @file_get_contents($url, false, $ctx);
+
+        if ($result === false) {
+            error_log("[WAF] Telegram: notificación fallida — verifica token/chatId en .env");
+        }
     }
 
 }

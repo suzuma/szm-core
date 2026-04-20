@@ -5,10 +5,10 @@
 
 {# ── Tailwind con preflight desactivado para no romper el design system ── #}
 {% block head %}
-<script>
+<script nonce="{{ csp_nonce }}">
     window.tailwind = { corePlugins: { preflight: false } };
 </script>
-<script src="https://cdn.tailwindcss.com"></script>
+<script nonce="{{ csp_nonce }}" src="https://cdn.tailwindcss.com"></script>
 <style>
     /* Overrides puntuales para la tabla de usuarios */
     .user-table { width:100%; border-collapse:collapse; }
@@ -360,7 +360,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
 'use strict';
 

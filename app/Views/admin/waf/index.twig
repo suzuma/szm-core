@@ -1,0 +1,196 @@
+{% extends 'layouts/app.twig' %}
+{% import 'components/stat_card.twig' as stat %}
+{% import 'components/empty_state.twig' as empty %}
+
+{% block title %}WAF — {{ app_name }}{% endblock %}
+{% block page_title %}Firewall (WAF){% endblock %}
+
+{% block breadcrumbs %}
+<nav class="breadcrumbs" aria-label="Ruta de navegación">
+    <ol>
+        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+        <li class="breadcrumb-item breadcrumb-active">WAF</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+
+{# ── Sub-tabs ──────────────────────────────────────────────────────────────── #}
+<nav class="waf-tabs">
+    <a href="/admin/waf"             class="waf-tab active">Resumen</a>
+    <a href="/admin/waf/blocked-ips" class="waf-tab">IPs bloqueadas</a>
+    <a href="/admin/waf/attack-logs" class="waf-tab">Log de ataques</a>
+</nav>
+
+{# ── KPI row ───────────────────────────────────────────────────────────────── #}
+<div class="waf-grid">
+    {{ stat.render('Ataques hoy',        attacks_today, 'danger')|raw }}
+    {{ stat.render('Ataques 7 días',     attacks_week,  'warning')|raw }}
+    {{ stat.render('IPs bloqueadas',     banned_ips,    'navy')|raw }}
+    {{ stat.render('Regla más activa',   top_rule,      'sky')|raw }}
+</div>
+
+{# ── Main two-column grid ──────────────────────────────────────────────────── #}
+<div style="display:grid;grid-template-columns:1fr 320px;gap:1rem;align-items:start">
+
+    {# ── Left column ─────────────────────────────────────────────────────── #}
+    <div style="display:flex;flex-direction:column;gap:1rem">
+
+        {# Timeline SVG (últimas 24 h) #}
+        <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+                <h2 style="font-size:.9375rem;font-weight:600;color:var(--navy)">Ataques — últimas 24 h</h2>
+                <span style="font-size:.75rem;color:var(--muted)">por hora</span>
+            </div>
+
+            {% set max_val = 1 %}
+            {% for point in timeline %}
+                {% if point.total > max_val %}{% set max_val = point.total %}{% endif %}
+            {% endfor %}
+
+            {# SVG sparkline — 24 puntos, viewport 480×80 #}
+            <div class="waf-sparkline-wrap">
+                <svg class="waf-sparkline" viewBox="0 0 480 80" preserveAspectRatio="none"
+                     aria-label="Ataques por hora">
+                    {# Grid lines #}
+                    <line x1="0" y1="20" x2="480" y2="20" stroke="#e2e8f0" stroke-width="1"/>
+                    <line x1="0" y1="40" x2="480" y2="40" stroke="#e2e8f0" stroke-width="1"/>
+                    <line x1="0" y1="60" x2="480" y2="60" stroke="#e2e8f0" stroke-width="1"/>
+
+                    {# Area fill #}
+                    <defs>
+                        <linearGradient id="waf-grad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%"   stop-color="#00BFFF" stop-opacity=".3"/>
+                            <stop offset="100%" stop-color="#00BFFF" stop-opacity="0"/>
+                        </linearGradient>
+                    </defs>
+
+                    {% set step = 20 %}
+                    {% set area_points = "0,80 " %}
+                    {% for point in timeline %}
+                        {% set x = loop.index0 * step %}
+                        {% set y = 80 - (point.total / max_val * 72) %}
+                        {% set area_points = area_points ~ x ~ "," ~ y ~ " " %}
+                    {% endfor %}
+                    {% set area_points = area_points ~ "480,80" %}
+                    <polygon points="{{ area_points }}" fill="url(#waf-grad)"/>
+
+                    {# Line #}
+                    {% set line_points = "" %}
+                    {% for point in timeline %}
+                        {% set x = loop.index0 * step %}
+                        {% set y = 80 - (point.total / max_val * 72) %}
+                        {% set line_points = line_points ~ x ~ "," ~ y ~ " " %}
+                    {% endfor %}
+                    <polyline points="{{ line_points }}" fill="none"
+                              stroke="#00BFFF" stroke-width="2" stroke-linejoin="round"/>
+
+                    {# Dots for non-zero hours #}
+                    {% for point in timeline %}
+                        {% if point.total > 0 %}
+                            {% set x = loop.index0 * step %}
+                            {% set y = 80 - (point.total / max_val * 72) %}
+                            <circle cx="{{ x }}" cy="{{ y }}" r="3" fill="#00BFFF" stroke="#fff" stroke-width="1.5">
+                                <title>{{ point.hour }}: {{ point.total }} ataques</title>
+                            </circle>
+                        {% endif %}
+                    {% endfor %}
+                </svg>
+            </div>
+
+            {# Hour labels — show every 4 hours #}
+            <div style="display:flex;justify-content:space-between;margin-top:.4rem;padding:0 2px">
+                {% for point in timeline %}
+                    {% if loop.index0 % 4 == 0 %}
+                        <span style="font-size:.65rem;color:var(--muted)">{{ point.hour }}</span>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        {# Top 5 IPs #}
+        <div class="card" style="padding:0;overflow:hidden">
+            <div style="padding:.875rem 1rem .5rem;border-bottom:1px solid var(--border)">
+                <h2 style="font-size:.9375rem;font-weight:600;color:var(--navy)">Top IPs por riesgo</h2>
+            </div>
+            {% if top_ips is empty %}
+                <div style="padding:1rem">{{ empty.render('Sin datos', 'No hay IPs registradas aún.')|raw }}</div>
+            {% else %}
+            <div style="overflow-x:auto">
+                <table class="waf-table">
+                    <thead>
+                        <tr>
+                            <th>IP</th>
+                            <th>País</th>
+                            <th>Score</th>
+                            <th>Estado</th>
+                            <th>Último intento</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ip in top_ips %}
+                        <tr>
+                            <td style="font-family:monospace;font-size:.82rem">{{ ip.ip_address }}</td>
+                            <td class="waf-geo">
+                                <span class="waf-geo-flag"></span>
+                                {{ ip.country ?? '—' }}
+                            </td>
+                            <td>
+                                {% set risk_class = ip.risk_score >= 13 ? 'waf-risk-high' : (ip.risk_score >= 6 ? 'waf-risk-medium' : 'waf-risk-low') %}
+                                <span class="waf-risk-pill {{ risk_class }}">{{ ip.risk_score }}</span>
+                            </td>
+                            <td>
+                                {% if ip.is_banned %}
+                                    <span class="badge-status badge-inactive">Bloqueada</span>
+                                {% else %}
+                                    <span class="badge-status badge-active">Activa</span>
+                                {% endif %}
+                            </td>
+                            <td style="font-size:.8rem;color:var(--muted)">
+                                {{ ip.last_attempt ? ip.last_attempt|date('d/m H:i') : '—' }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div style="padding:.5rem 1rem;text-align:right">
+                <a href="/admin/waf/blocked-ips" style="font-size:.8rem">Ver todas →</a>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>{# /left column #}
+
+    {# ── Right column — Rule distribution ──────────────────────────────── #}
+    <div class="card">
+        <h2 style="font-size:.9375rem;font-weight:600;color:var(--navy);margin-bottom:1rem">
+            Reglas disparadas <span style="font-weight:400;color:var(--muted);font-size:.8rem">(7 días)</span>
+        </h2>
+
+        {% if rules is empty %}
+            {{ empty.render('Sin ataques', 'No se han registrado ataques esta semana.')|raw }}
+        {% else %}
+        <ul class="waf-rule-list">
+            {% for rule in rules %}
+            <li class="waf-rule-item">
+                <div class="waf-rule-header">
+                    <span class="waf-rule-badge">{{ rule.rule }}</span>
+                    <span style="color:var(--muted)">{{ rule.total }}</span>
+                </div>
+                <div class="waf-rule-track">
+                    <div class="waf-rule-bar" style="width:{{ rule.percent }}%"></div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        <div style="margin-top:1rem;text-align:right">
+            <a href="/admin/waf/attack-logs" style="font-size:.8rem">Ver logs →</a>
+        </div>
+        {% endif %}
+    </div>
+
+</div>{# /grid #}
+
+{% endblock %}

@@ -146,7 +146,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 /* ── Audit diff modal ─────────────────────────────────────────────── */
 const modal    = document.getElementById('diff-modal');
 const oldPre   = document.getElementById('diff-old');

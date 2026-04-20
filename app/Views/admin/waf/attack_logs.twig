@@ -1,0 +1,198 @@
+{% extends 'layouts/app.twig' %}
+{% import 'components/empty_state.twig' as empty %}
+
+{% block title %}Log de Ataques — WAF — {{ app_name }}{% endblock %}
+{% block page_title %}Firewall (WAF){% endblock %}
+
+{% block breadcrumbs %}
+<nav class="breadcrumbs" aria-label="Ruta de navegación">
+    <ol>
+        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="/admin/waf">WAF</a></li>
+        <li class="breadcrumb-item breadcrumb-active">Log de ataques</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+
+{# ── Sub-tabs ──────────────────────────────────────────────────────────────── #}
+<nav class="waf-tabs">
+    <a href="/admin/waf"             class="waf-tab">Resumen</a>
+    <a href="/admin/waf/blocked-ips" class="waf-tab">IPs bloqueadas</a>
+    <a href="/admin/waf/attack-logs" class="waf-tab active">Log de ataques</a>
+</nav>
+
+{# ── Filtros ───────────────────────────────────────────────────────────────── #}
+<div class="card" style="margin-bottom:1.25rem">
+    <form method="GET" action="/admin/waf/attack-logs" class="waf-filters">
+        <div class="form-group">
+            <label for="f-rule">Regla</label>
+            <select id="f-rule" name="rule" class="input">
+                <option value="">Todas</option>
+                {% for r in rules %}
+                    <option value="{{ r }}" {{ filter_rule == r ? 'selected' : '' }}>{{ r }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="min-width:160px">
+            <label for="f-ip">IP</label>
+            <input id="f-ip" type="text" name="ip" class="input"
+                   value="{{ filter_ip }}" placeholder="192.168.x.x">
+        </div>
+        <div class="form-group" style="min-width:140px">
+            <label for="f-date-from">Desde</label>
+            <input id="f-date-from" type="date" name="date_from" class="input"
+                   value="{{ filter_date_from }}">
+        </div>
+        <div class="form-group" style="min-width:140px">
+            <label for="f-date-to">Hasta</label>
+            <input id="f-date-to" type="date" name="date_to" class="input"
+                   value="{{ filter_date_to }}">
+        </div>
+        <div style="align-self:flex-end;display:flex;gap:.4rem">
+            <button type="submit" class="btn" style="width:auto;padding:.6rem 1.25rem">Filtrar</button>
+            {% if filter_rule or filter_ip or filter_date_from or filter_date_to %}
+                <a href="/admin/waf/attack-logs" class="btn-outline"
+                   style="padding:.55rem 1rem;text-decoration:none">Limpiar</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+{# ── Tabla ─────────────────────────────────────────────────────────────────── #}
+{% if logs is empty %}
+    {{ empty.render('Sin resultados', 'No hay ataques que coincidan con los filtros aplicados.')|raw }}
+{% else %}
+<div class="card" style="padding:0;overflow:hidden">
+    <div style="overflow-x:auto">
+        <table class="waf-table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>IP</th>
+                    <th>Regla</th>
+                    <th>Parámetro</th>
+                    <th>URI</th>
+                    <th>Payload</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td style="white-space:nowrap;font-size:.8rem;color:var(--muted)">
+                        {{ log.created_at|date('d/m/Y H:i:s') }}
+                    </td>
+                    <td style="font-family:monospace;font-size:.82rem;white-space:nowrap">
+                        {{ log.ip_address }}
+                    </td>
+                    <td><span class="waf-rule-badge">{{ log.rule_triggered }}</span></td>
+                    <td style="font-family:monospace;font-size:.78rem;color:var(--muted)">
+                        {{ log.parameter ?? '—' }}
+                    </td>
+                    <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8rem"
+                        title="{{ log.uri }}">
+                        {{ log.uri ?? '—' }}
+                    </td>
+                    <td>
+                        {% if log.payload %}
+                            <button type="button" class="btn-outline waf-payload-btn"
+                                    data-payload="{{ log.payload|e('html_attr') }}"
+                                    data-rule="{{ log.rule_triggered }}"
+                                    data-ip="{{ log.ip_address }}"
+                                    data-uri="{{ log.uri ?? '' }}"
+                                    style="padding:.25rem .6rem;font-size:.75rem">
+                                Ver payload
+                            </button>
+                        {% else %}
+                            <span style="color:var(--muted);font-size:.8rem">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# ── Paginación ──────────────────────────────────────────────────────────── #}
+{% if total_pages > 1 %}
+<div class="audit-pagination">
+    {% if page > 1 %}
+        <a href="?page={{ page - 1 }}&rule={{ filter_rule }}&ip={{ filter_ip }}&date_from={{ filter_date_from }}&date_to={{ filter_date_to }}"
+           class="btn-outline">← Anterior</a>
+    {% endif %}
+    <span style="color:var(--muted);font-size:.875rem">
+        Página {{ page }} de {{ total_pages }} ({{ total }} registros)
+    </span>
+    {% if page < total_pages %}
+        <a href="?page={{ page + 1 }}&rule={{ filter_rule }}&ip={{ filter_ip }}&date_from={{ filter_date_from }}&date_to={{ filter_date_to }}"
+           class="btn-outline">Siguiente →</a>
+    {% endif %}
+</div>
+{% else %}
+<p style="text-align:right;color:var(--muted);font-size:.8125rem;margin-top:.75rem">
+    {{ total }} registro{{ total != 1 ? 's' : '' }}
+</p>
+{% endif %}
+
+{% endif %}
+
+{# ── Payload modal ─────────────────────────────────────────────────────────── #}
+<div id="waf-payload-modal" class="waf-modal-backdrop" role="dialog" aria-modal="true"
+     aria-labelledby="waf-modal-title">
+    <div class="waf-modal">
+        <div class="waf-modal-header">
+            <span id="waf-modal-title" class="waf-modal-title">Payload detectado</span>
+            <button type="button" id="waf-modal-close" class="waf-modal-close" aria-label="Cerrar">×</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;font-size:.8rem">
+            <div>
+                <span style="font-weight:600;color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.04em">Regla</span>
+                <p id="waf-modal-rule" style="margin-top:.2rem"></p>
+            </div>
+            <div>
+                <span style="font-weight:600;color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.04em">IP origen</span>
+                <p id="waf-modal-ip" style="margin-top:.2rem;font-family:monospace"></p>
+            </div>
+        </div>
+        <div>
+            <span style="font-weight:600;color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.04em">URI</span>
+            <p id="waf-modal-uri" style="margin-top:.2rem;font-size:.8rem;word-break:break-all"></p>
+        </div>
+        <div>
+            <span style="font-weight:600;color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.04em">Payload</span>
+            <pre id="waf-modal-payload" class="waf-payload-pre" style="margin-top:.3rem"></pre>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ csp_nonce }}">
+/* ── Payload modal ────────────────────────────────────────────────────── */
+const payloadModal  = document.getElementById('waf-payload-modal');
+const payloadPre    = document.getElementById('waf-modal-payload');
+const modalRule     = document.getElementById('waf-modal-rule');
+const modalIp       = document.getElementById('waf-modal-ip');
+const modalUri      = document.getElementById('waf-modal-uri');
+const modalClose    = document.getElementById('waf-modal-close');
+
+document.querySelectorAll('.waf-payload-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        payloadPre.textContent  = btn.dataset.payload;
+        modalRule.textContent   = btn.dataset.rule  || '—';
+        modalIp.textContent     = btn.dataset.ip    || '—';
+        modalUri.textContent    = btn.dataset.uri   || '—';
+        payloadModal.classList.add('open');
+    });
+});
+
+function closePayloadModal() { payloadModal.classList.remove('open'); }
+
+modalClose?.addEventListener('click', closePayloadModal);
+payloadModal?.addEventListener('click', e => { if (e.target === payloadModal) closePayloadModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePayloadModal(); });
+</script>
+{% endblock %}

@@ -18,7 +18,6 @@
   },
   "require": {
     "php": "^8.3",
-    "ezyang/htmlpurifier": "^4.19",
     "illuminate/database": "^13.3",
     "illuminate/events": "^13.3",
     "illuminate/pagination": "^13.3",

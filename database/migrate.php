@@ -5,15 +5,19 @@
  *
  * Uso desde la raíz del proyecto:
  *
- *   php database/migrate.php              → ejecuta solo migraciones
- *   php database/migrate.php --seed       → migraciones + seeds SQL
- *   php database/migrate.php --fresh      → DROP + CREATE + seeds SQL
+ *   php database/migrate.php              → migraciones + todos los seeds
+ *   php database/migrate.php --no-seed    → solo migraciones (sin seeds)
+ *   php database/migrate.php --fresh      → DROP + migraciones + todos los seeds
  *
- * El seed del usuario admin es interactivo y se ejecuta por separado:
- *   php database/seeds/003_admin_user.php
+ * Seeds ejecutados en orden numérico:
+ *   *.sql  → ejecutados directamente via PDO
+ *   *.php  → ejecutados como subproceso (preserva input interactivo de terminal)
  *
  * Variables de entorno requeridas en .env:
  *   DB_HOST, DB_PORT, DB_DATABASE, DB_USERNAME, DB_PASSWORD
+ *
+ * Variables opcionales para el seed del admin (003_admin_user.php):
+ *   ADMIN_EMAIL, ADMIN_NAME, ADMIN_PASSWORD
  */
 
 declare(strict_types=1);
@@ -25,8 +29,11 @@ if (PHP_SAPI !== 'cli') {
 }
 
 // ── Flags ─────────────────────────────────────────────────────────────────────
-$withSeed = in_array('--seed',  $argv ?? [], true);
-$fresh    = in_array('--fresh', $argv ?? [], true);
+$noSeed = in_array('--no-seed', $argv ?? [], true);
+$fresh  = in_array('--fresh',   $argv ?? [], true);
+
+// --seed se mantiene por compatibilidad pero ya no es necesario
+$withSeed = !$noSeed;
 
 // ── Carga del .env ────────────────────────────────────────────────────────────
 $rootDir = dirname(__DIR__);
@@ -118,32 +125,49 @@ foreach ($migrationFiles as $file) {
     }
 }
 
-// ── Ejecutar seeds SQL (opcional) ─────────────────────────────────────────────
-if ($withSeed || $fresh) {
-    $seedsDir   = __DIR__ . '/seeds';
-    $seedFiles  = glob($seedsDir . '/*.sql');
-    sort($seedFiles);
+// ── Ejecutar seeds (SQL + PHP) ────────────────────────────────────────────────
+if ($withSeed) {
+    $seedsDir  = __DIR__ . '/seeds';
+
+    // Recopilar SQL y PHP en un solo listado ordenado numéricamente
+    $seedFiles = array_merge(
+        glob($seedsDir . '/*.sql') ?: [],
+        glob($seedsDir . '/*.php') ?: []
+    );
+    usort($seedFiles, fn(string $a, string $b): int => basename($a) <=> basename($b));
 
     out("\n[SEEDS]");
 
     foreach ($seedFiles as $file) {
         $name = basename($file);
-        try {
-            $sql = file_get_contents($file);
-            foreach (splitStatements($sql) as $statement) {
-                if (trim($statement) !== '') {
-                    $pdo->exec($statement);
+        $ext  = pathinfo($file, PATHINFO_EXTENSION);
+
+        if ($ext === 'sql') {
+            // Seeds SQL: ejecutados directamente via PDO
+            try {
+                $sql = file_get_contents($file);
+                foreach (splitStatements($sql) as $statement) {
+                    if (trim($statement) !== '') {
+                        $pdo->exec($statement);
+                    }
                 }
+                out("  ✓ {$name}");
+            } catch (PDOException $e) {
+                err("  ✗ {$name}: " . $e->getMessage());
+                exit(1);
+            }
+        } elseif ($ext === 'php') {
+            // Seeds PHP: ejecutados como subproceso para aislar scope y
+            // preservar el input interactivo de la terminal (ej: prompt de contraseña).
+            out("  → {$name}");
+            passthru(PHP_BINARY . ' ' . escapeshellarg($file), $exitCode);
+            if ($exitCode !== 0) {
+                err("  ✗ {$name} terminó con código {$exitCode}");
+                exit($exitCode);
             }
             out("  ✓ {$name}");
-        } catch (PDOException $e) {
-            err("  ✗ {$name}: " . $e->getMessage());
-            exit(1);
         }
     }
-
-    out("\n  → Para crear el usuario administrador ejecuta:");
-    out("    php database/seeds/003_admin_user.php");
 }
 
 out("\n✓ Completado.\n");

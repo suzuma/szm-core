@@ -26,11 +26,13 @@ trait Auditable
 {
     /**
      * Campos que NUNCA deben aparecer en el audit log.
-     * Definir en el modelo para personalizar (por defecto vacío).
-     *
-     * Ejemplo en el modelo:
-     *   protected array $auditExclude = ['password', 'reset_token'];
+     * Override en el modelo para personalizar.
      */
+    protected array $auditExclude = [
+        'password',
+        'reset_token',
+        'reset_token_expires',
+    ];
 
     protected static function bootAuditable(): void
     {

@@ -3,12 +3,8 @@
 declare(strict_types=1);
 
 use App\Controllers\Admin\AuditController;
-use App\Controllers\Admin\CategoryAdminController;
-use App\Controllers\Admin\MediaController;
-use App\Controllers\Admin\PostAdminController;
+use App\Controllers\Admin\WafController;
 use App\Controllers\AuthController;
-use App\Controllers\Blog\BlogController;
-use App\Controllers\FeedController;
 use App\Controllers\HomeController;
 use App\Controllers\UserController;
 use Phroute\Phroute\Route;
@@ -57,6 +53,14 @@ $router->get('/', [HomeController::class, 'index'], [Route::BEFORE => 'auth']);
 // ── Administración — solo rol admin ────────────────────────────────────────
 $router->get('/admin/audit-log', [AuditController::class, 'index'], [Route::BEFORE => 'admin']);
 
+// ── WAF — monitoreo y gestión ──────────────────────────────────────────────
+$router->group([Route::BEFORE => 'admin'], function ($router): void {
+    $router->get('/admin/waf',              [WafController::class, 'index']);
+    $router->get('/admin/waf/blocked-ips',  [WafController::class, 'blockedIps']);
+    $router->get('/admin/waf/attack-logs',  [WafController::class, 'attackLogs']);
+    $router->post('/admin/waf/unban/{id:i}', [WafController::class, 'unban']);
+});
+
 // ── Gestión de usuarios (CRUD vía AJAX) ────────────────────────────────────
 $router->group([Route::BEFORE => 'admin'], function ($router): void {
     $router->get('/admin/users',                   [UserController::class, 'index']);
@@ -65,34 +69,3 @@ $router->group([Route::BEFORE => 'admin'], function ($router): void {
     $router->patch('/admin/users/{id:i}/toggle',   [UserController::class, 'toggleActive']);
     $router->delete('/admin/users/{id:i}',         [UserController::class, 'destroy']);
 });
-
-// ── Blog admin (solo rol admin) ────────────────────────────────────────────
-$router->group([Route::BEFORE => 'admin'], function ($router): void {
-    // Posts
-    $router->get('/admin/blog',                       [PostAdminController::class, 'index']);
-    $router->get('/admin/blog/create',                [PostAdminController::class, 'create']);
-    $router->post('/admin/blog',                      [PostAdminController::class, 'store']);
-    $router->post('/admin/blog/slug-preview',         [PostAdminController::class, 'slugPreview']);
-    $router->post('/admin/blog/media',                [MediaController::class, 'store']);
-    $router->get('/admin/blog/{id:i}/edit',           [PostAdminController::class, 'edit']);
-    $router->put('/admin/blog/{id:i}',                [PostAdminController::class, 'update']);
-    $router->delete('/admin/blog/{id:i}',             [PostAdminController::class, 'destroy']);
-    $router->post('/admin/blog/{id:i}/publish',       [PostAdminController::class, 'publish']);
-    // Categorías
-    $router->get('/admin/blog/categories',                      [CategoryAdminController::class, 'index']);
-    $router->post('/admin/blog/categories',                     [CategoryAdminController::class, 'store']);
-    $router->put('/admin/blog/categories/{id:i}',               [CategoryAdminController::class, 'update']);
-    $router->delete('/admin/blog/categories/{id:i}',            [CategoryAdminController::class, 'destroy']);
-    $router->patch('/admin/blog/categories/{id:i}/toggle',      [CategoryAdminController::class, 'toggleActive']);
-});
-
-// ── Feeds SEO (públicos) ───────────────────────────────────────────────────
-$router->get('/sitemap.xml', [FeedController::class, 'sitemap']);
-$router->get('/rss.xml',     [FeedController::class, 'rss']);
-$router->get('/robots.txt',  [FeedController::class, 'robots']);
-
-// ── Blog / Noticias (acceso público, sin filtro auth) ─────────────────────
-$router->get('/blog',                          [BlogController::class, 'index']);
-$router->get('/blog/categoria/{slug}',         [BlogController::class, 'byCategory']);
-$router->get('/blog/tag/{slug}',               [BlogController::class, 'byTag']);
-$router->get('/blog/{slug}',                   [BlogController::class, 'show']);

@@ -31,7 +31,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 /* ── Validación inline — login ────────────────────────────────────────── */
 (function () {
     const form = document.querySelector('[data-validate]');

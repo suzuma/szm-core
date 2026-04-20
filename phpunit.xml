@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         displayDetailsOnTestsThatTriggerWarnings="true"
+         displayDetailsOnTestsThatTriggerDeprecations="true"
+         failOnEmptyTestSuite="true">
+
+    <testsuites>
+        <testsuite name="WAF — Detección de ataques">
+            <directory>tests/Waf/Detection</directory>
+        </testsuite>
+        <testsuite name="WAF — Normalización anti-bypass">
+            <directory>tests/Waf/Normalize</directory>
+        </testsuite>
+        <testsuite name="WAF — Identidad / IP">
+            <directory>tests/Waf/Identity</directory>
+        </testsuite>
+        <testsuite name="WAF — Configuración">
+            <directory>tests/Waf/Config</directory>
+        </testsuite>
+    </testsuites>
+
+    <source>
+        <include>
+            <directory>core/Security/Waf</directory>
+        </include>
+    </source>
+
+</phpunit>
