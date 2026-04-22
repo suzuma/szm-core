@@ -42,6 +42,7 @@ final class Application
         $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
         $app = new self($publicDir, $uri);
 
+        $app->blockSensitiveUris();   // ← PRIMERO: corte antes de tocar DB o .env
         $app->loadEnvironment();
         $app->loadConfig();
         $app->configurePhpRuntime();
@@ -58,6 +59,31 @@ final class Application
     /* ------------------------------------------------------------------
       | PASOS DE BOOTSTRAP (privados, orden explícito en ::boot)
       ------------------------------------------------------------------ */
+
+    /**
+     * 0. Corta peticiones a rutas sensibles ANTES de inicializar cualquier servicio.
+     *    Es la primera línea de defensa: opera sin DB, sin sesión, sin .env cargado.
+     *    Protege contra el caso en que el WAF no se ejecute (error en bootstrap, etc.).
+     */
+    private function blockSensitiveUris(): void
+    {
+        $uri      = strtolower($this->uri);
+        $basename = basename($uri);
+
+        // Bloquear dotfiles: .env, .git, .htaccess, .ssh, etc.
+        if (str_starts_with($basename, '.') && $basename !== '') {
+            http_response_code(403);
+            exit('403 Forbidden');
+        }
+
+        // Bloquear extensiones de configuración accedidas directamente
+        $forbiddenExtensions = ['env', 'sql', 'log', 'lock', 'bak', 'config'];
+        $ext = strtolower(pathinfo($uri, PATHINFO_EXTENSION));
+        if (in_array($ext, $forbiddenExtensions, true)) {
+            http_response_code(403);
+            exit('403 Forbidden');
+        }
+    }
 
     /** a) Carga variables de entorno desde .env */
     private function loadEnvironment(): void

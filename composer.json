@@ -45,6 +45,7 @@
   "scripts": {
     "test": "phpunit",
     "analyze": "phpstan analyze app core",
-    "format": "php-cs-fixer fix"
+    "format": "php-cs-fixer fix",
+    "serve": "php -S localhost:8000 index.php"
   }
 }

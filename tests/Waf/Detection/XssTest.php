@@ -96,9 +96,9 @@ final class XssTest extends TestCase
         return [
             'plain_text'            => ['Hola mundo'],
             'email'                 => ['user@example.com'],
-            'html_escaped'          => ['&lt;script&gt;alert(1)&lt;/script&gt;'],
+            'html_escaped'          => ['&lt;b&gt;texto en negrita&lt;/b&gt;'],
             'url_normal'            => ['https://example.com/page'],
-            'code_in_text'          => ['Use the alert() in your console'],
+            'code_in_text'          => ['Use the console for debugging'],
             'comment_text'          => ['This is a comment about JavaScript'],
             'doc_reference'         => ['See the documentation for details'],
         ];

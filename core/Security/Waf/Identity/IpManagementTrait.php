@@ -225,6 +225,8 @@ trait IpManagementTrait
                 'city' => $geo['city'],
                 'country' => $geo['country'],
                 'isp' => $geo['isp'],
+                'latitude'  => $geo['lat'] ?? null,
+                'longitude' => $geo['lon'] ?? null,
                 'reason' => $reason,
                 'last_attempt' => $now,
                 'created_at' => $now
@@ -319,9 +321,11 @@ trait IpManagementTrait
             Capsule::table('waf_blocked_ips_szm')
                 ->where('id', $record->id)
                 ->update([
-                    'city' => $geo['city'],
-                    'country' => $geo['country'],
-                    'isp' => $geo['isp']
+                    'city'      => $geo['city'],
+                    'country'   => $geo['country'],
+                    'isp'       => $geo['isp'],
+                    'latitude'  => $geo['lat'] ?? null,
+                    'longitude' => $geo['lon'] ?? null,
                 ]);
         }
 
@@ -339,10 +343,10 @@ trait IpManagementTrait
      */
     protected function getIpDetails(string $ip): array
     {
-        $default = ['city' => 'Unknown', 'country' => 'Unknown', 'isp' => 'Unknown'];
+        $default = ['city' => 'Unknown', 'country' => 'Unknown', 'isp' => 'Unknown', 'lat' => null, 'lon' => null];
 
         if ($ip === '127.0.0.1' || $ip === '::1') {
-            return ['city' => 'Localhost', 'country' => 'Local', 'isp' => 'Internal Network'];
+            return ['city' => 'Localhost', 'country' => 'Local', 'isp' => 'Internal Network', 'lat' => null, 'lon' => null];
         }
 
         $cacheKey = "waf:geo:{$ip}";
@@ -362,7 +366,7 @@ trait IpManagementTrait
                 ]
             ]);
 
-            $res = @file_get_contents("http://ip-api.com/json/{$ip}?fields=status,country,city,isp", false, $ctx);
+            $res = @file_get_contents("http://ip-api.com/json/{$ip}?fields=status,country,city,isp,lat,lon", false, $ctx);
 
             if ($res === false) return $default;
 

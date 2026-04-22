@@ -58,6 +58,7 @@ $router->group([Route::BEFORE => 'admin'], function ($router): void {
     $router->get('/admin/waf',              [WafController::class, 'index']);
     $router->get('/admin/waf/blocked-ips',  [WafController::class, 'blockedIps']);
     $router->get('/admin/waf/attack-logs',  [WafController::class, 'attackLogs']);
+    $router->get('/admin/waf/geo-map',      [WafController::class, 'geoMap']);
     $router->post('/admin/waf/unban/{id:i}', [WafController::class, 'unban']);
 });
 

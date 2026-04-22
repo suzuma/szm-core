@@ -19,10 +19,12 @@
 RewriteEngine On
 RewriteBase /
 
-# Proteger carpetas sensibles (Seguridad de estructura)
-RewriteRule ^(app|core|vendor|views)/ - [F,L]
+# Proteger directorios sensibles — ninguno de estos debe ser accesible via HTTP
+RewriteRule ^(app|core|vendor|views|database|storage|tests|backup_waf)/ - [F,L]
 
 # Si existe archivo o directorio real, cargarlo directamente
+# NOTA: el bloqueo de FilesMatch (sección 3) aplica antes que esta regla en Apache,
+#       así que .env y dotfiles nunca llegan aquí aunque existan físicamente.
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
@@ -53,8 +55,22 @@ RewriteRule ^ index.php [QSA,L]
 # ----------------------------------------------------------------------
 # 3. PROTECCIÓN DE ARCHIVOS CRÍTICOS
 # ----------------------------------------------------------------------
-# Evita que alguien pueda leer el propio .htaccess o archivos de config
-<FilesMatch "^(\.htaccess|\.env|\.ini|composer\.(json|lock))$">
+
+# Bloquear TODOS los dotfiles: .env, .env.local, .git, .gitignore,
+# .htpasswd, .ssh, .idea, .vscode, etc.
+<FilesMatch "^\.">
+    Order deny,allow
+    Deny from all
+</FilesMatch>
+
+# Bloquear extensiones de configuración y datos sensibles
+<FilesMatch "\.(env|sql|log|bak|config|lock|sh|bash|key|pem|pfx|p12)$">
+    Order deny,allow
+    Deny from all
+</FilesMatch>
+
+# Bloquear archivos de configuración por nombre exacto
+<FilesMatch "^(composer\.json|composer\.lock|package\.json|package-lock\.json|webpack\.config\.js|vite\.config\.js|dockerfile|docker-compose\.yml|phpunit\.xml)$">
     Order deny,allow
     Deny from all
 </FilesMatch>

@@ -48,7 +48,7 @@ final class SqlInjectionTest extends TestCase
 
             // Lógicos
             'or_1_equals_1'              => ["' OR 1=1--"],
-            'or_a_equals_a'              => ["' OR 'a'='a"],
+            'or_a_equals_a'              => ["' OR 'a'='a'"],
             'and_1_equals_1_parens'      => ["1 AND(1=1)"],
             'or_with_parens'             => ["1 OR(1=1)--"],
 

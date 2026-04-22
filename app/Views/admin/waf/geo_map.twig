@@ -1,0 +1,373 @@
+{% extends 'layouts/app.twig' %}
+
+{% block title %}Mapa de Amenazas — WAF — {{ app_name }}{% endblock %}
+{% block page_title %}Firewall (WAF){% endblock %}
+
+{% block head %}
+{# Leaflet CSS — mapa interactivo sin API key #}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css" crossorigin="">
+<style>
+    #waf-map {
+        height: 520px;
+        width: 100%;
+        border-radius: 8px;
+        z-index: 0;
+    }
+    .leaflet-popup-content-wrapper {
+        font-size: .8125rem;
+        line-height: 1.5;
+    }
+    .map-pin-legend {
+        display: flex;
+        gap: 1.25rem;
+        flex-wrap: wrap;
+        font-size: .75rem;
+        color: var(--muted);
+        margin-top: .625rem;
+    }
+    .map-pin-legend span {
+        display: flex;
+        align-items: center;
+        gap: .35rem;
+    }
+    .legend-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        border: 2px solid rgba(0,0,0,.25);
+    }
+    .country-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: .4rem 0;
+        border-bottom: 1px solid var(--border);
+        font-size: .8125rem;
+    }
+    .country-row:last-child { border-bottom: none; }
+    .country-bar-wrap {
+        flex: 1;
+        margin: 0 .75rem;
+        background: var(--border);
+        border-radius: 4px;
+        height: 6px;
+        overflow: hidden;
+    }
+    .country-bar {
+        height: 100%;
+        border-radius: 4px;
+        background: var(--danger, #e53e3e);
+    }
+    .badge-risk {
+        font-size: .6875rem;
+        padding: .15rem .45rem;
+        border-radius: 9999px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .badge-high   { background:#fee2e2; color:#b91c1c; }
+    .badge-medium { background:#fef3c7; color:#92400e; }
+    .badge-low    { background:#d1fae5; color:#065f46; }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<nav class="breadcrumbs" aria-label="Ruta de navegación">
+    <ol>
+        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="/admin/waf">WAF</a></li>
+        <li class="breadcrumb-item breadcrumb-active">Mapa de amenazas</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+
+{# ── Sub-tabs ──────────────────────────────────────────────────────────────── #}
+<nav class="waf-tabs">
+    <a href="/admin/waf"             class="waf-tab">Resumen</a>
+    <a href="/admin/waf/blocked-ips" class="waf-tab">IPs bloqueadas</a>
+    <a href="/admin/waf/attack-logs" class="waf-tab">Log de ataques</a>
+    <a href="/admin/waf/geo-map"     class="waf-tab active">Mapa de amenazas</a>
+</nav>
+
+{# ── KPI row ───────────────────────────────────────────────────────────────── #}
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.25rem">
+
+    <div class="card" style="text-align:center;padding:1rem">
+        <div style="font-size:2rem;font-weight:700;color:var(--danger)">{{ total_pins }}</div>
+        <div style="font-size:.8125rem;color:var(--muted);margin-top:.25rem">IPs con ubicación</div>
+    </div>
+
+    <div class="card" style="text-align:center;padding:1rem">
+        <div style="font-size:2rem;font-weight:700;color:var(--navy)">{{ by_country|length }}</div>
+        <div style="font-size:.8125rem;color:var(--muted);margin-top:.25rem">Países de origen</div>
+    </div>
+
+    <div class="card" style="text-align:center;padding:1rem">
+        <div style="font-size:2rem;font-weight:700;color:var(--muted)">{{ without_coords }}</div>
+        <div style="font-size:.8125rem;color:var(--muted);margin-top:.25rem">IPs sin coordenadas</div>
+    </div>
+
+</div>
+
+{# ── Layout: mapa + sidebar ────────────────────────────────────────────────── #}
+<div style="display:grid;grid-template-columns:1fr 280px;gap:1rem;align-items:start">
+
+    {# ── Mapa ─────────────────────────────────────────────────────────────── #}
+    <div class="card" style="padding:1rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+            <h2 style="font-size:.9375rem;font-weight:600;color:var(--navy)">
+                Origen geográfico de IPs bloqueadas
+            </h2>
+            <span style="font-size:.75rem;color:var(--muted)">{{ total_pins }} pins — últimas 500 por riesgo</span>
+        </div>
+
+        <div id="waf-map"></div>
+
+        <div class="map-pin-legend">
+            <span><i class="legend-dot" style="background:#b91c1c"></i> Riesgo alto (&ge; 15)</span>
+            <span><i class="legend-dot" style="background:#d97706"></i> Riesgo medio (5–14)</span>
+            <span><i class="legend-dot" style="background:#059669"></i> Riesgo bajo (&lt; 5)</span>
+            <span><i class="legend-dot" style="background:#6366f1"></i> Baneada</span>
+        </div>
+
+        {% if without_coords > 0 %}
+        <p style="margin-top:.75rem;font-size:.75rem;color:var(--muted)">
+            {{ without_coords }} IP(s) no tienen coordenadas — corresponden a registros anteriores
+            a la migración de geolocalización. Se irán actualizando conforme vuelvan a activarse.
+        </p>
+        {% endif %}
+    </div>
+
+    {# ── Sidebar: top países ───────────────────────────────────────────────── #}
+    <div style="display:flex;flex-direction:column;gap:1rem">
+
+        <div class="card">
+            <h2 style="font-size:.9375rem;font-weight:600;color:var(--navy);margin-bottom:1rem">
+                Top países de origen
+            </h2>
+
+            {% if by_country is empty %}
+                <p style="font-size:.8125rem;color:var(--muted);text-align:center;padding:1rem 0">
+                    Sin datos suficientes aún.
+                </p>
+            {% else %}
+                {% set max_total = 1 %}
+                {% for c in by_country %}
+                    {% if c.total > max_total %}{% set max_total = c.total %}{% endif %}
+                {% endfor %}
+                {% for c in by_country %}
+                <div class="country-row">
+                    <span style="min-width:80px;font-weight:500">{{ c.country }}</span>
+                    <div class="country-bar-wrap">
+                        <div class="country-bar"
+                             style="width:{{ (c.total / max_total * 100)|round }}%"></div>
+                    </div>
+                    <span style="min-width:28px;text-align:right;font-variant-numeric:tabular-nums">
+                        {{ c.total }}
+                    </span>
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        {# Acceso rápido #}
+        <div class="card" style="padding:1rem">
+            <h3 style="font-size:.8125rem;font-weight:600;color:var(--navy);margin-bottom:.75rem">
+                Acciones rápidas
+            </h3>
+            <a href="/admin/waf/blocked-ips"
+               style="display:block;font-size:.8125rem;padding:.4rem 0;color:var(--primary)">
+                Ver todas las IPs bloqueadas →
+            </a>
+            <a href="/admin/waf/attack-logs"
+               style="display:block;font-size:.8125rem;padding:.4rem 0;color:var(--primary)">
+                Ver log de ataques →
+            </a>
+        </div>
+
+    </div>
+</div>
+
+{# ── Tabla de markers (debajo del mapa, colapsable) ───────────────────────── #}
+{% if markers is not empty %}
+<div class="card" style="margin-top:1rem">
+    <details>
+        <summary style="font-size:.9375rem;font-weight:600;color:var(--navy);cursor:pointer;padding:.25rem 0">
+            Detalle de IPs geolocalizadas ({{ total_pins }})
+        </summary>
+        <div style="overflow-x:auto;margin-top:.75rem">
+            <table class="data-table" style="font-size:.8125rem">
+                <thead>
+                    <tr>
+                        <th>IP</th>
+                        <th>País</th>
+                        <th>Ciudad</th>
+                        <th>ISP</th>
+                        <th>Riesgo</th>
+                        <th>Estado</th>
+                        <th>Último intento</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for m in markers %}
+                <tr>
+                    <td style="font-family:monospace">{{ m.ip_address }}</td>
+                    <td>{{ m.country }}</td>
+                    <td>{{ m.city }}</td>
+                    <td style="color:var(--muted)">{{ m.isp }}</td>
+                    <td>
+                        {% if m.risk_score >= 15 %}
+                            <span class="badge-risk badge-high">{{ m.risk_score }}</span>
+                        {% elseif m.risk_score >= 5 %}
+                            <span class="badge-risk badge-medium">{{ m.risk_score }}</span>
+                        {% else %}
+                            <span class="badge-risk badge-low">{{ m.risk_score }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if m.is_banned %}
+                            <span class="badge-risk badge-high">Baneada</span>
+                        {% else %}
+                            <span style="color:var(--muted)">Monitoreada</span>
+                        {% endif %}
+                    </td>
+                    <td style="color:var(--muted);white-space:nowrap">{{ m.last_attempt }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </details>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{# ── Scripts del mapa ──────────────────────────────────────────────────────── #}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"
+        crossorigin="" nonce="{{ csp_nonce }}"></script>
+
+<script nonce="{{ csp_nonce }}">
+(function () {
+    // ── Datos del servidor ─────────────────────────────────────────────────
+    const markers = {{ markers|json_encode|raw }};
+
+    // ── Inicializar mapa centrado en el mundo ──────────────────────────────
+    const map = L.map('waf-map', {
+        center: [20, 0],
+        zoom: 2,
+        minZoom: 2,
+        maxZoom: 14
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 19
+    }).addTo(map);
+
+    // ── Helpers ────────────────────────────────────────────────────────────
+
+    function pinColor(m) {
+        if (m.is_banned)       return '#6366f1'; // baneada → morado
+        if (m.risk_score >= 15) return '#b91c1c'; // alto    → rojo
+        if (m.risk_score >= 5)  return '#d97706'; // medio   → naranja
+        return '#059669';                          // bajo    → verde
+    }
+
+    function circleOptions(m) {
+        const color  = pinColor(m);
+        const radius = Math.max(5, Math.min(14, 4 + m.risk_score * 0.6));
+        return {
+            radius,
+            fillColor:   color,
+            color:       '#fff',
+            weight:      1.5,
+            opacity:     1,
+            fillOpacity: 0.85
+        };
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '—';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function popupContent(m) {
+        const statusLabel = m.is_banned
+            ? '<span style="color:#b91c1c;font-weight:600">Baneada</span>'
+            : '<span style="color:#059669">Monitoreada</span>';
+
+        return `
+            <div style="min-width:200px">
+                <strong style="font-family:monospace">${escapeHtml(m.ip_address)}</strong>
+                <hr style="margin:.4rem 0;border-color:#e2e8f0">
+                <table style="width:100%;font-size:.8rem;border-collapse:collapse">
+                    <tr><td style="color:#6b7280;padding:.1rem 0">País</td>
+                        <td style="text-align:right"><strong>${escapeHtml(m.country)}</strong></td></tr>
+                    <tr><td style="color:#6b7280;padding:.1rem 0">Ciudad</td>
+                        <td style="text-align:right">${escapeHtml(m.city)}</td></tr>
+                    <tr><td style="color:#6b7280;padding:.1rem 0">ISP</td>
+                        <td style="text-align:right">${escapeHtml(m.isp)}</td></tr>
+                    <tr><td style="color:#6b7280;padding:.1rem 0">Riesgo</td>
+                        <td style="text-align:right"><strong>${m.risk_score}</strong></td></tr>
+                    <tr><td style="color:#6b7280;padding:.1rem 0">Estado</td>
+                        <td style="text-align:right">${statusLabel}</td></tr>
+                    <tr><td style="color:#6b7280;padding:.1rem 0">Último intento</td>
+                        <td style="text-align:right">${escapeHtml(m.last_attempt)}</td></tr>
+                </table>
+                <a href="/admin/waf/blocked-ips?country=${encodeURIComponent(m.country)}"
+                   style="display:block;margin-top:.5rem;font-size:.75rem;text-align:center;
+                          color:#4f46e5;text-decoration:none">
+                    Ver todas de ${escapeHtml(m.country)} →
+                </a>
+            </div>`;
+    }
+
+    // ── Dibujar markers ────────────────────────────────────────────────────
+    if (markers.length === 0) {
+        document.getElementById('waf-map').insertAdjacentHTML('afterend',
+            '<p style="text-align:center;color:#6b7280;margin-top:.75rem;font-size:.875rem">' +
+            'Aún no hay IPs con coordenadas. Se poblarán automáticamente con los próximos ataques.</p>'
+        );
+    }
+
+    const layerGroup = L.layerGroup().addTo(map);
+
+    markers.forEach(function (m) {
+        const lat = parseFloat(m.latitude);
+        const lon = parseFloat(m.longitude);
+
+        if (isNaN(lat) || isNaN(lon)) return;
+
+        // Añadir pequeño jitter para separar markers en la misma ciudad
+        const jLat = lat + (Math.random() - 0.5) * 0.04;
+        const jLon = lon + (Math.random() - 0.5) * 0.04;
+
+        L.circleMarker([jLat, jLon], circleOptions(m))
+            .bindPopup(popupContent(m), { maxWidth: 260 })
+            .addTo(layerGroup);
+    });
+
+    // ── Ajustar bounds si hay markers ──────────────────────────────────────
+    if (markers.length > 0) {
+        try {
+            const validLatLngs = markers
+                .filter(m => m.latitude && m.longitude)
+                .map(m => [parseFloat(m.latitude), parseFloat(m.longitude)]);
+
+            if (validLatLngs.length > 0) {
+                map.fitBounds(validLatLngs, { padding: [30, 30], maxZoom: 6 });
+            }
+        } catch (_) { /* mantener vista por defecto */ }
+    }
+})();
+</script>
+{% endblock %}

@@ -14,6 +14,7 @@ use Illuminate\Database\Capsule\Manager as Capsule;
  *   GET  /admin/waf                → index()
  *   GET  /admin/waf/blocked-ips   → blockedIps()
  *   GET  /admin/waf/attack-logs   → attackLogs()
+ *   GET  /admin/waf/geo-map       → geoMap()
  *   POST /admin/waf/unban/{id}    → unban()
  */
 final class WafController extends BaseController
@@ -209,6 +210,43 @@ final class WafController extends BaseController
             'per_page'    => $perPage,
             'total'       => $total,
             'total_pages' => (int) ceil($total / $perPage),
+        ]);
+    }
+
+    // ── Mapa de geolocalización ───────────────────────────────────────────────
+
+    public function geoMap(): string
+    {
+        // IPs con coordenadas conocidas (máx. 500 pins)
+        $markers = Capsule::table('waf_blocked_ips_szm')
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->select('ip_address', 'city', 'country', 'isp', 'risk_score', 'is_banned', 'latitude', 'longitude', 'last_attempt')
+            ->orderByDesc('risk_score')
+            ->limit(500)
+            ->get();
+
+        // Top 10 países por número de IPs registradas
+        $byCountry = Capsule::table('waf_blocked_ips_szm')
+            ->select('country', Capsule::raw('COUNT(*) as total, MAX(risk_score) as max_score'))
+            ->whereNotNull('country')
+            ->where('country', '!=', 'Unknown')
+            ->where('country', '!=', 'Local')
+            ->groupBy('country')
+            ->orderByDesc('total')
+            ->limit(10)
+            ->get();
+
+        // Total de IPs sin coordenadas (registros previos a la migración 009)
+        $withoutCoords = Capsule::table('waf_blocked_ips_szm')
+            ->where(fn($q) => $q->whereNull('latitude')->orWhereNull('longitude'))
+            ->count();
+
+        return $this->view('admin/waf/geo_map.twig', [
+            'markers'       => $markers,
+            'by_country'    => $byCountry,
+            'without_coords'=> $withoutCoords,
+            'total_pins'    => $markers->count(),
         ]);
     }
 

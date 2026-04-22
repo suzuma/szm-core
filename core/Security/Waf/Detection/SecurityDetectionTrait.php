@@ -98,11 +98,12 @@ trait SecurityDetectionTrait
      */
     private function normalizeSql(string $value): string
     {
-        // 1. Eliminar comentarios inline MySQL: /**/ entre palabras
-        $clean = preg_replace('/\/\*.*?\*\//s', '', $value);
+        // 1. Expandir versioned comments antes de eliminar: /*!50000 UNION*/ → ' UNION '
+        //    Se añaden espacios para no fusionar el token extraído con lo que lo rodea
+        $clean = preg_replace('/\/\*!\d*\s*(.*?)\s*\*\//s', ' $1 ', $value);
 
-        // 2. Eliminar versioned comments: /*!50000 ... */
-        $clean = preg_replace('/\/\*!\d*\s*(.*?)\s*\*\//s', '$1', $clean);
+        // 2. Eliminar comentarios inline MySQL: /**/ → espacio para no fusionar tokens
+        $clean = preg_replace('/\/\*.*?\*\//s', ' ', $clean);
 
         // 3. Normalizar whitespace (tabs, newlines, returns → espacio)
         $clean = preg_replace('/[\t\r\n\x0B\x0C]+/', ' ', $clean);
@@ -446,9 +447,9 @@ trait SecurityDetectionTrait
         // son usados frecuentemente para evadir patrones que buscan espacios
         $clean = preg_replace('/[\t\r\n\x0B\x0C\xA0]+/', ' ', $clean);
 
-        // CAPA 6: Eliminar comentarios SQL inline
-        // SEL/**/ECT → SELECT  (ya cubierto en normalizeSql pero lo anticipamos aquí)
-        $clean = preg_replace('/\/\*.*?\*\//s', '', $clean);
+        // CAPA 6: Eliminar comentarios SQL inline → espacio para no fusionar tokens
+        // SEL/**/ECT → SEL ECT  (luego el colapso de espacios en capa 7 lo limpia)
+        $clean = preg_replace('/\/\*.*?\*\//s', ' ', $clean);
 
         // CAPA 7: Colapsar espacios múltiples resultado de las limpiezas anteriores
         $clean = preg_replace('/\s{2,}/', ' ', $clean);

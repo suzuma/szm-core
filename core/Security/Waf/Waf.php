@@ -167,16 +167,22 @@ class Waf
      */
     protected function isWhitelisted(): bool
     {
-        $staticWhitelist = ['127.0.0.1', '::1', '192.168.1.100'];
-        if (in_array($this->ip, $staticWhitelist)) return true;
+        // IPs de confianza configurables por entorno — NO hardcodeadas.
+        // En dev: dejar vacío para que el WAF inspeccione localhost (permite lab de pruebas).
+        // En prod: agregar IPs del equipo de ops/admin separadas por coma.
+        // Ejemplo .env: WAF_TRUSTED_IPS=203.0.113.10,203.0.113.11
+        $raw = trim($_ENV['WAF_TRUSTED_IPS'] ?? '');
+        if ($raw !== '') {
+            $trustedIps = array_map('trim', explode(',', $raw));
+            if (in_array($this->ip, $trustedIps, true)) return true;
+        }
 
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         if (isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin') return true;
 
         if (isset($_COOKIE['WAF_BYPASS_KEY'])) {
-            $resp = $this->validateBypassToken($_COOKIE['WAF_BYPASS_KEY']);
-            return $resp;
+            return $this->validateBypassToken($_COOKIE['WAF_BYPASS_KEY']);
         }
 
         return false;
@@ -248,10 +254,12 @@ class Waf
      */
     public function handle(): void
     {
-        // 1. NIVEL VIP: excepciones inmediatas
-        if ($this->isWhitelisted()) return;
-        // URIs prohibidas — corte inmediato sin tocar DB innecesariamente
+        // 0. URIs prohibidas — se ejecuta SIEMPRE, incluso para IPs en whitelist.
+        //    Ninguna IP de confianza necesita acceder a /.env, /.git, /wp-admin etc.
         $this->blockForbiddenUris();
+
+        // 1. NIVEL VIP: excepciones inmediatas (después de URI guard)
+        if ($this->isWhitelisted()) return;
 
         // Fast Ban por Redis antes de tocar la DB
         if ($this->redis) {

@@ -75,6 +75,13 @@ final class StaticFileHandler
             return; // Path traversal detectado o archivo no existe
         }
 
+        // Bloquear dotfiles (.env, .htaccess, .git, etc.) — nunca deben ser accesibles
+        $basename = basename($candidatePath);
+        if (str_starts_with($basename, '.')) {
+            http_response_code(403);
+            exit('403 Forbidden');
+        }
+
         $extension = strtolower(pathinfo($candidatePath, PATHINFO_EXTENSION));
 
         if (self::isForbidden($extension)) {
@@ -97,9 +104,7 @@ final class StaticFileHandler
      */
     private static function resolvePath(string $publicDir, string $uri): ?string
     {
-        // Construimos la ruta candidata quitando el prefijo /public de la URI
-        // para mantener compatibilidad con el comportamiento original.
-        $candidate = $publicDir . str_replace('/public', '', $uri);
+        $candidate = $publicDir . $uri;
         $realPath  = realpath($candidate);
 
         if ($realPath === false || !is_file($realPath)) {
