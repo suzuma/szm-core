@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace Core\Console;
 
 use Core\Console\Commands\MakeControllerCommand;
+use Core\Console\Commands\MakeEventCommand;
 use Core\Console\Commands\MakeMigrationCommand;
 use Core\Console\Commands\MakeModelCommand;
+use Core\Console\Commands\MakeRequestCommand;
+use Core\Console\Commands\MakeSeederCommand;
 use Core\Console\Commands\MigrateCommand;
 
 /**
@@ -27,6 +30,9 @@ final class ConsoleApplication
         'make:controller' => MakeControllerCommand::class,
         'make:model'      => MakeModelCommand::class,
         'make:migration'  => MakeMigrationCommand::class,
+        'make:request'    => MakeRequestCommand::class,
+        'make:seeder'     => MakeSeederCommand::class,
+        'make:event'      => MakeEventCommand::class,
     ];
 
     public function __construct(private readonly string $basePath) {}
@@ -86,6 +92,9 @@ final class ConsoleApplication
         self::out('  ' . self::cyan('php bin/szm make:controller Dashboard'));
         self::out('  ' . self::cyan('php bin/szm make:model Producto'));
         self::out('  ' . self::cyan('php bin/szm make:migration create_productos_table'));
+        self::out('  ' . self::cyan('php bin/szm make:request StoreProducto'));
+        self::out('  ' . self::cyan('php bin/szm make:seeder productos'));
+        self::out('  ' . self::cyan('php bin/szm make:event ProductoCreado'));
         self::out('');
     }
 

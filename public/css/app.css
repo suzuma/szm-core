@@ -1166,3 +1166,329 @@ a:hover { color: var(--sky-dk); text-decoration: underline; }
     .waf-grid { grid-template-columns: 1fr; }
     .waf-tabs { overflow-x: auto; }
 }
+
+/* ==========================================================================
+   SPRINT 2 — Password strength meter
+   ========================================================================== */
+
+.strength-wrap {
+    margin: -.25rem 0 .75rem;
+}
+
+.strength-bar {
+    height: 5px;
+    background: var(--border);
+    border-radius: 9999px;
+    overflow: hidden;
+    margin-bottom: .3rem;
+}
+
+.strength-fill {
+    height: 100%;
+    width: 0;
+    border-radius: 9999px;
+    transition: width .3s ease, background .3s ease;
+}
+
+.strength-label {
+    font-size: .75rem;
+    font-weight: 600;
+    transition: color .3s;
+}
+
+/* ==========================================================================
+   SPRINT 2 — Paginación genérica
+   ========================================================================== */
+
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .25rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.pagination-info {
+    font-size: .8125rem;
+    color: var(--muted);
+    text-align: center;
+    margin-top: .5rem;
+}
+
+.page-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    height: 2rem;
+    padding: 0 .5rem;
+    border-radius: 6px;
+    font-size: .8125rem;
+    font-weight: 500;
+    color: var(--navy);
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    text-decoration: none;
+    transition: background .12s, border-color .12s, color .12s;
+    cursor: pointer;
+    font-family: inherit;
+    line-height: 1;
+    user-select: none;
+}
+
+.page-btn:hover:not(.page-btn-active):not(.page-btn-disabled) {
+    background: var(--sky-lt);
+    border-color: var(--sky);
+    color: var(--navy);
+    text-decoration: none;
+}
+
+.page-btn-active {
+    background: var(--navy);
+    border-color: var(--navy);
+    color: #fff;
+    cursor: default;
+    pointer-events: none;
+}
+
+.page-btn-disabled {
+    opacity: .38;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.page-ellipsis {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    color: var(--muted);
+    font-size: .8125rem;
+}
+
+/* ==========================================================================
+   SPRINT 2 — Modal genérico
+   ========================================================================== */
+
+.modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(13, 59, 102, .5);
+    z-index: 300;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    animation: modal-fade-in .18s ease;
+}
+
+.modal-backdrop.open { display: flex; }
+
+@keyframes modal-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.modal {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: 0 16px 48px rgba(13, 59, 102, .22);
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-height: calc(100vh - 4rem);
+    overflow: hidden;
+    animation: modal-slide-up .2s ease;
+}
+
+@keyframes modal-slide-up {
+    from { transform: translateY(16px); opacity: .6; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* Tamaños */
+.modal-sm { max-width: 400px; }
+.modal-md { max-width: 560px; }
+.modal-lg { max-width: 720px; }
+.modal-xl { max-width: 960px; }
+
+/* Header */
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.modal-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin: 0;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 1.375rem;
+    line-height: 1;
+    padding: .25rem;
+    border-radius: 4px;
+    transition: color .12s, background .12s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.modal-close:hover { color: var(--navy); background: var(--bg); }
+
+/* Body */
+.modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+    line-height: 1.65;
+    color: var(--muted);
+    font-size: .9375rem;
+}
+
+/* Footer */
+.modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .625rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+    .modal { max-width: 100% !important; max-height: 85vh; }
+    .modal-footer { flex-direction: column-reverse; }
+    .modal-footer .btn { width: 100%; justify-content: center; }
+}
+
+/* ==========================================================================
+   SPRINT 2 — Dark mode
+   Estrategia: [data-theme="dark"] toma precedencia sobre prefers-color-scheme.
+   Sin atributo = respeta la preferencia del sistema operativo.
+   ========================================================================== */
+
+/* Tokens oscuros */
+.dark-vars {
+    --bg:       #0f172a;
+    --surface:  #1e293b;
+    --border:   #334155;
+    --text:     #e2e8f0;
+    --muted:    #94a3b8;
+    --sky-lt:   rgba(0, 191, 255, .08);
+    --shadow:   0 2px 12px rgba(0, 0, 0, .35);
+}
+
+/* Aplicar automáticamente si el SO usa dark y el usuario no ha elegido */
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="light"]) {
+        color-scheme: dark;
+        --bg:       #0f172a;
+        --surface:  #1e293b;
+        --border:   #334155;
+        --text:     #e2e8f0;
+        --muted:    #94a3b8;
+        --sky-lt:   rgba(0, 191, 255, .08);
+        --shadow:   0 2px 12px rgba(0, 0, 0, .35);
+    }
+}
+
+/* Toggle manual: forzar dark */
+[data-theme="dark"] {
+    color-scheme: dark;
+    --bg:       #0f172a;
+    --surface:  #1e293b;
+    --border:   #334155;
+    --text:     #e2e8f0;
+    --muted:    #94a3b8;
+    --sky-lt:   rgba(0, 191, 255, .08);
+    --shadow:   0 2px 12px rgba(0, 0, 0, .35);
+}
+/* Forzar background/color en body como fallback por si variables no cascadean */
+[data-theme="dark"] body {
+    background: #0f172a !important;
+    color: #e2e8f0 !important;
+}
+
+/* Toggle manual: forzar light */
+[data-theme="light"] { color-scheme: light; }
+[data-theme="light"] body {
+    background: #F0F4F8 !important;
+    color: #0D3B66 !important;
+}
+
+/* ── Componentes con colores hardcoded que necesitan override ── */
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="light"]) .input        { background: #0f172a; color: var(--text); }
+    html:not([data-theme="light"]) .topbar       { background: #1e293b; }
+    html:not([data-theme="light"]) .breadcrumbs  { background: #1e293b; }
+    html:not([data-theme="light"]) .strength-bar { background: #334155; }
+    html:not([data-theme="light"]) .waf-payload-pre { background: #0f172a; color: #94a3b8; }
+    html:not([data-theme="light"]) .audit-table th  { background: #0f172a; }
+    html:not([data-theme="light"]) .waf-table tbody tr:hover td { background: rgba(0,191,255,.05); }
+    html:not([data-theme="light"]) .badge-default { background: #334155; color: #94a3b8; }
+    html:not([data-theme="light"]) .badge-primary { background: rgba(0,191,255,.12); }
+    html:not([data-theme="light"]) .badge-success { background: rgba(34,197,94,.1); color: #86efac; }
+    html:not([data-theme="light"]) .badge-warning { background: rgba(245,158,11,.1); color: #fcd34d; }
+    html:not([data-theme="light"]) .badge-danger  { background: rgba(239,68,68,.1);  color: #fca5a5; }
+    html:not([data-theme="light"]) .alert-error   { background: rgba(239,68,68,.1);  color: #fca5a5; border-color: rgba(239,68,68,.3); }
+    html:not([data-theme="light"]) .alert-success { background: rgba(34,197,94,.1);  color: #86efac; border-color: rgba(34,197,94,.3); }
+    html:not([data-theme="light"]) .alert-warning { background: rgba(245,158,11,.1); color: #fcd34d; border-color: rgba(245,158,11,.3); }
+    html:not([data-theme="light"]) .alert-info    { background: rgba(0,191,255,.08); color: var(--sky); border-color: rgba(0,191,255,.25); }
+    html:not([data-theme="light"]) .diff-old { border-color: rgba(239,68,68,.3); background: rgba(239,68,68,.06); }
+    html:not([data-theme="light"]) .diff-new { border-color: rgba(34,197,94,.3); background: rgba(34,197,94,.06); }
+}
+
+[data-theme="dark"] .input        { background: #0f172a; color: var(--text); }
+[data-theme="dark"] .topbar       { background: #1e293b; }
+[data-theme="dark"] .breadcrumbs  { background: #1e293b; }
+[data-theme="dark"] .strength-bar { background: #334155; }
+[data-theme="dark"] .waf-payload-pre { background: #0f172a; color: #94a3b8; }
+[data-theme="dark"] .audit-table th  { background: #0f172a; }
+[data-theme="dark"] .waf-table tbody tr:hover td { background: rgba(0,191,255,.05); }
+[data-theme="dark"] .badge-default { background: #334155; color: #94a3b8; }
+[data-theme="dark"] .badge-primary { background: rgba(0,191,255,.12); }
+[data-theme="dark"] .badge-success { background: rgba(34,197,94,.1); color: #86efac; }
+[data-theme="dark"] .badge-warning { background: rgba(245,158,11,.1); color: #fcd34d; }
+[data-theme="dark"] .badge-danger  { background: rgba(239,68,68,.1);  color: #fca5a5; }
+[data-theme="dark"] .alert-error   { background: rgba(239,68,68,.1);  color: #fca5a5; border-color: rgba(239,68,68,.3); }
+[data-theme="dark"] .alert-success { background: rgba(34,197,94,.1);  color: #86efac; border-color: rgba(34,197,94,.3); }
+[data-theme="dark"] .alert-warning { background: rgba(245,158,11,.1); color: #fcd34d; border-color: rgba(245,158,11,.3); }
+[data-theme="dark"] .alert-info    { background: rgba(0,191,255,.08); color: var(--sky); border-color: rgba(0,191,255,.25); }
+[data-theme="dark"] .diff-old { border-color: rgba(239,68,68,.3); background: rgba(239,68,68,.06); }
+[data-theme="dark"] .diff-new { border-color: rgba(34,197,94,.3); background: rgba(34,197,94,.06); }
+
+/* ── Botón toggle dark mode ── */
+.theme-toggle {
+    background: none;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    width: 2.25rem;
+    height: 2.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--muted);
+    transition: color .15s, border-color .15s, background .15s;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.theme-toggle:hover { color: var(--navy); border-color: var(--sky); background: var(--sky-lt); }

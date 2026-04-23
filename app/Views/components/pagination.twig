@@ -1,0 +1,80 @@
+{#
+  pagination.twig — Paginación genérica reutilizable.
+
+  Uso:
+    {% import 'components/pagination.twig' as pager %}
+
+    {# Paginación básica #}
+    {{ pager.render(page, total_pages, '/admin/logs')|raw }}
+
+    {# Con query params existentes (se añade &page=N) #}
+    {{ pager.render(page, total_pages, '/admin/logs?rule=sql&severity=high')|raw }}
+
+    {# Con info de registros #}
+    {{ pager.render(page, total_pages, '/admin/logs', total, per_page)|raw }}
+
+  Parámetros:
+    current     int    — página actual (1-based)
+    total_pages int    — número total de páginas
+    base_url    string — URL base (puede incluir otros query params)
+    total       int    — total de registros (opcional, para mostrar info)
+    per_page    int    — registros por página (opcional, para mostrar info)
+#}
+
+{% macro render(current, total_pages, base_url, total, per_page) %}
+    {% if total_pages <= 1 %}{% return %}{% endif %}
+
+    {# Separador para query params #}
+    {% set sep = '?' in base_url ? '&' : '?' %}
+
+    {# Construir ventana de páginas: siempre muestra primera, última, actual±2 #}
+    {% set pages = [] %}
+    {% for p in 1..total_pages %}
+        {% if p == 1 or p == total_pages or (p >= current - 2 and p <= current + 2) %}
+            {% set pages = pages|merge([p]) %}
+        {% endif %}
+    {% endfor %}
+
+    <nav class="pagination" aria-label="Paginación" role="navigation">
+
+        {# Anterior #}
+        {% if current <= 1 %}
+            <span class="page-btn page-btn-disabled" aria-disabled="true">‹</span>
+        {% else %}
+            <a class="page-btn" href="{{ base_url }}{{ sep }}page={{ current - 1 }}" aria-label="Página anterior">‹</a>
+        {% endif %}
+
+        {# Páginas con ellipsis automático #}
+        {% set prev = null %}
+        {% for p in pages %}
+            {% if prev is not null and p - prev > 1 %}
+                <span class="page-ellipsis" aria-hidden="true">…</span>
+            {% endif %}
+
+            {% if p == current %}
+                <span class="page-btn page-btn-active" aria-current="page" aria-label="Página {{ p }}">{{ p }}</span>
+            {% else %}
+                <a class="page-btn" href="{{ base_url }}{{ sep }}page={{ p }}" aria-label="Página {{ p }}">{{ p }}</a>
+            {% endif %}
+
+            {% set prev = p %}
+        {% endfor %}
+
+        {# Siguiente #}
+        {% if current >= total_pages %}
+            <span class="page-btn page-btn-disabled" aria-disabled="true">›</span>
+        {% else %}
+            <a class="page-btn" href="{{ base_url }}{{ sep }}page={{ current + 1 }}" aria-label="Página siguiente">›</a>
+        {% endif %}
+
+    </nav>
+
+    {# Info de registros (opcional) #}
+    {% if total is defined and total > 0 and per_page is defined and per_page > 0 %}
+        {% set from = (current - 1) * per_page + 1 %}
+        {% set to   = [current * per_page, total]|min %}
+        <p class="pagination-info" aria-live="polite">
+            Mostrando {{ from }}–{{ to }} de {{ total }} registros
+        </p>
+    {% endif %}
+{% endmacro %}

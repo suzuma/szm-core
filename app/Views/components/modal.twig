@@ -1,0 +1,87 @@
+{#
+  modal.twig — Modal genérico reutilizable.
+
+  Requiere que la API Modal (JS) esté disponible en el layout.
+  Incluida automáticamente en layouts/app.twig.
+
+  ── Uso básico con {% call %} ────────────────────────────────────────────
+
+    {% import 'components/modal.twig' as modal %}
+
+    {# Trigger — cualquier elemento con onclick="Modal.open('id')" #}
+    <button class="btn" onclick="Modal.open('confirmar-borrar')">Eliminar</button>
+
+    {# Definición del modal #}
+    {% call(footer) modal.dialog('confirmar-borrar', 'Eliminar usuario', 'sm') %}
+      <p>¿Estás seguro de que quieres eliminar a <strong>{{ user.name }}</strong>?
+         Esta acción no se puede deshacer.</p>
+    {% endcall %}
+
+  ── Con footer personalizado ─────────────────────────────────────────────
+
+    {% call(footer) modal.dialog('guardar-config', 'Guardar cambios', 'md') %}
+      <p>Se actualizarán {{ count }} configuraciones. ¿Continuar?</p>
+      {# El segundo bloque se usa como footer #}
+      {% if footer %}
+        <button class="btn btn-ghost" onclick="Modal.close('guardar-config')">Cancelar</button>
+        <button class="btn" onclick="document.getElementById('config-form').submit()">Guardar</button>
+      {% endif %}
+    {% endcall %}
+
+  ── Sin contenido caller (modal vacío con footer predefinido) ─────────────
+
+    {{ modal.confirm('confirm-unban', '¿Desbloquear IP?', '¿Seguro?', '/admin/waf/unban/1')|raw }}
+
+  ── API JavaScript ───────────────────────────────────────────────────────
+
+    Modal.open('id')         → abre
+    Modal.close('id')        → cierra
+    Modal.closeAll()         → cierra todos
+    Modal.confirm(msg, onOk) → diálogo de confirmación programático (Promise)
+#}
+
+{# ── Macro principal — usar con {% call %} ─────────────────────────────── #}
+{% macro dialog(id, title, size) %}
+    {% set sz = size ?? 'md' %}
+    <div class="modal-backdrop" id="modal-{{ id }}"
+         role="dialog" aria-modal="true" aria-labelledby="modal-title-{{ id }}"
+         onclick="if(event.target===this) Modal.close('{{ id }}')">
+        <div class="modal modal-{{ sz }}">
+            <header class="modal-header">
+                <h3 class="modal-title" id="modal-title-{{ id }}">{{ title }}</h3>
+                <button class="modal-close" onclick="Modal.close('{{ id }}')"
+                        aria-label="Cerrar" type="button">×</button>
+            </header>
+            <div class="modal-body">
+                {{ caller() }}
+            </div>
+        </div>
+    </div>
+{% endmacro %}
+
+{# ── Macro de confirmación simple (sin caller) ─────────────────────────── #}
+{% macro confirm(id, title, message, action_url, action_label, cancel_label) %}
+    {% set action_lbl = action_label ?? 'Confirmar' %}
+    {% set cancel_lbl = cancel_label ?? 'Cancelar' %}
+    <div class="modal-backdrop" id="modal-{{ id }}"
+         role="dialog" aria-modal="true" aria-labelledby="modal-title-{{ id }}"
+         onclick="if(event.target===this) Modal.close('{{ id }}')">
+        <div class="modal modal-sm">
+            <header class="modal-header">
+                <h3 class="modal-title" id="modal-title-{{ id }}">{{ title }}</h3>
+                <button class="modal-close" onclick="Modal.close('{{ id }}')" type="button" aria-label="Cerrar">×</button>
+            </header>
+            <div class="modal-body">
+                <p>{{ message }}</p>
+            </div>
+            <footer class="modal-footer">
+                <button class="btn btn-ghost" onclick="Modal.close('{{ id }}')" type="button">{{ cancel_lbl }}</button>
+                {% if action_url %}
+                    <a href="{{ action_url }}" class="btn btn-danger">{{ action_lbl }}</a>
+                {% else %}
+                    <button class="btn btn-danger" onclick="Modal.close('{{ id }}')" type="button">{{ action_lbl }}</button>
+                {% endif %}
+            </footer>
+        </div>
+    </div>
+{% endmacro %}

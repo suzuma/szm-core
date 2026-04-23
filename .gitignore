@@ -10,6 +10,9 @@
 # ── Dependencias ──────────────────────────────────────────────────────────────
 /vendor/
 
+# ── Claude Code ───────────────────────────────────────────────────────────────
+.claude/
+
 # ── Caché de Twig ─────────────────────────────────────────────────────────────
 /storage/cache/
 
@@ -18,6 +21,11 @@
 
 # ── Uploads ───────────────────────────────────────────────────────────────────
 /storage/uploads/
+!/storage/uploads/.gitkeep
+
+# ── FileCache (driver de caché en disco) ──────────────────────────────────────
+/storage/filecache/
+!/storage/filecache/.gitkeep
 
 # ── PHPUnit ───────────────────────────────────────────────────────────────────
 /.phpunit.cache/
@@ -35,6 +43,13 @@
 
 # ── PHPStan ───────────────────────────────────────────────────────────────────
 /.phpstan.cache/
+
+# ── Node (por si se añade tooling frontend en el futuro) ──────────────────────
+node_modules/
+npm-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
 
 # ── macOS ─────────────────────────────────────────────────────────────────────
 .DS_Store

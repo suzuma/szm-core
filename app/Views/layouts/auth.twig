@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" id="htmlRoot">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +9,7 @@
     {% block head %}{% endblock %}
 </head>
 <body>
+    <button class="auth-theme-toggle" id="themeToggle" aria-label="Cambiar tema" title="Cambiar tema">🌙</button>
     <div class="card">
         <div class="auth-brand">
             <img src="{{ asset('public/assets/logo.png') }}" alt="{{ app_name }}">
@@ -17,6 +18,23 @@
     </div>
 
     <script nonce="{{ csp_nonce }}">
+    /* ── Dark mode ────────────────────────────────────────────────────── */
+    (function(){
+        var root = document.documentElement;
+        var saved = localStorage.getItem('szm-theme');
+        if (saved === 'dark' || saved === 'light') root.setAttribute('data-theme', saved);
+        var btn = document.getElementById('themeToggle');
+        function syncIcon(){ btn.textContent = root.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙'; }
+        syncIcon();
+        btn.addEventListener('click', function(){
+            var current = root.getAttribute('data-theme');
+            var next = current === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('szm-theme', next);
+            syncIcon();
+        });
+    })();
+
     /* ── Loading state en formularios auth ───────────────────────────── */
     document.querySelectorAll('form').forEach(form => {
         form.addEventListener('submit', () => {

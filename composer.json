@@ -22,6 +22,7 @@
     "illuminate/events": "^13.3",
     "illuminate/pagination": "^13.3",
     "monolog/monolog": "^3.10",
+    "phpmailer/phpmailer": "^7.0",
     "phroute/phroute": "^2.2",
     "twig/twig": "^3.0",
     "vlucas/phpdotenv": "^5.6"

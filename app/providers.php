@@ -5,10 +5,16 @@ declare(strict_types=1);
 use App\Events\PasswordResetRequested;
 use App\Events\UserLoggedIn;
 use App\Models\AuditLog;
+use Core\Cache\ApcuCache;
+use Core\Cache\CacheInterface;
+use Core\Cache\FileCache;
 use Core\Contracts\MailerInterface;
 use Core\Events\EventDispatcher;
 use Core\Mail\NullMailer;
+use Core\Mail\SmtpMailer;
 use Core\ServicesContainer;
+use Core\Storage\LocalStorage;
+use Core\Storage\StorageInterface;
 
 /**
  * Providers — registro de servicios y listeners de eventos del núcleo.
@@ -41,8 +47,47 @@ use Core\ServicesContainer;
  * });
  */
 
-// ── Mailer — NullMailer por defecto (sin SMTP) ────────────────────────────
-ServicesContainer::bind(MailerInterface::class, fn() => new NullMailer());
+// ── Mailer ────────────────────────────────────────────────────────────────
+// Auto-selecciona SmtpMailer si MAIL_HOST está configurado, NullMailer si no.
+// Para forzar NullMailer en dev aunque MAIL_HOST esté definido:
+//   ServicesContainer::bind(MailerInterface::class, fn() => new NullMailer());
+ServicesContainer::bind(MailerInterface::class, function (): MailerInterface {
+    $host = $_ENV['MAIL_HOST'] ?? '';
+
+    if ($host === '') {
+        return new NullMailer();
+    }
+
+    return new SmtpMailer(
+        host:       $host,
+        port:       (int) ($_ENV['MAIL_PORT']         ?? 587),
+        username:   $_ENV['MAIL_USERNAME']             ?? '',
+        password:   $_ENV['MAIL_PASSWORD']             ?? '',
+        from:       $_ENV['MAIL_FROM_ADDRESS']         ?? '',
+        fromName:   $_ENV['MAIL_FROM_NAME']            ?? '',
+        encryption: $_ENV['MAIL_ENCRYPTION']           ?? 'tls',
+        debug:      ($_ENV['APP_ENV'] ?? 'prod') === 'dev' && ($_ENV['MAIL_DEBUG'] ?? '') === 'true',
+    );
+});
+
+// ── Cache ─────────────────────────────────────────────────────────────────
+// Auto-selecciona ApcuCache si la extensión está habilitada, FileCache si no.
+ServicesContainer::bind(CacheInterface::class, function (): CacheInterface {
+    $cachePath = ServicesContainer::getConfig('cache.path', sys_get_temp_dir() . '/szm_cache');
+
+    if (function_exists('apcu_fetch') && apcu_enabled()) {
+        return new ApcuCache(prefix: 'szm:');
+    }
+
+    return new FileCache(directory: $cachePath);
+});
+
+// ── Storage ───────────────────────────────────────────────────────────────
+ServicesContainer::bind(StorageInterface::class, function (): StorageInterface {
+    $storagePath = ServicesContainer::getConfig('storage.path', dirname(__DIR__) . '/storage/uploads');
+
+    return new LocalStorage(basePath: $storagePath, baseUrl: '/storage');
+});
 
 // ── Audit log — eventos del núcleo de autenticación ───────────────────────
 
