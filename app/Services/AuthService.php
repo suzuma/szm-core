@@ -107,8 +107,10 @@ class AuthService
             throw new \RuntimeException('El enlace de recuperación es inválido o ha expirado.');
         }
 
+        // BCrypt procesa solo los primeros 72 bytes; se trunca explícitamente
+        // para que contraseñas largas no den falsa sensación de seguridad.
         $user->update([
-            'password'            => password_hash($password, PASSWORD_BCRYPT),
+            'password'            => password_hash(substr($password, 0, 72), PASSWORD_BCRYPT, ['cost' => 12]),
             'reset_token'         => null,
             'reset_token_expires' => null,
             'failed_attempts'     => 0,

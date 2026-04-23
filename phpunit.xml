@@ -20,11 +20,15 @@
         <testsuite name="WAF — Configuración">
             <directory>tests/Waf/Config</directory>
         </testsuite>
+        <testsuite name="Config — EnvWriter">
+            <directory>tests/Config</directory>
+        </testsuite>
     </testsuites>
 
     <source>
         <include>
             <directory>core/Security/Waf</directory>
+            <directory>core/Config</directory>
         </include>
     </source>
 

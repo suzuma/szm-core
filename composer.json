@@ -42,10 +42,12 @@
       "Tests\\": "tests/"
     }
   },
+  "bin": ["bin/szm"],
   "scripts": {
     "test": "phpunit",
     "analyze": "phpstan analyze app core",
     "format": "php-cs-fixer fix",
-    "serve": "php -S localhost:8000 index.php"
+    "serve": "php -S localhost:8000 index.php",
+    "szm": "php bin/szm"
   }
 }

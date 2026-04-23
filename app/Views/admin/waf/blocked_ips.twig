@@ -49,12 +49,18 @@
                 <option value="expired" {{ filter_status == 'expired' ? 'selected' : '' }}>Expirados</option>
             </select>
         </div>
-        <div style="align-self:flex-end;display:flex;gap:.4rem">
+        <div style="align-self:flex-end;display:flex;gap:.4rem;flex-wrap:wrap">
             <button type="submit" class="btn" style="width:auto;padding:.6rem 1.25rem">Filtrar</button>
             {% if filter_country or filter_min_score or filter_status %}
                 <a href="/admin/waf/blocked-ips" class="btn-outline"
-                   style="align-self:flex-end;padding:.55rem 1rem;text-decoration:none">Limpiar</a>
+                   style="padding:.55rem 1rem;text-decoration:none">Limpiar</a>
             {% endif %}
+            <a href="/admin/waf/export/blocked-ips?country={{ filter_country|url_encode }}&min_score={{ filter_min_score }}&status={{ filter_status }}"
+               class="btn-outline"
+               style="padding:.55rem 1rem;text-decoration:none;color:#0369a1;border-color:#bae6fd"
+               title="Exportar resultados actuales a CSV">
+                ↓ CSV
+            </a>
         </div>
     </form>
 </div>
@@ -81,7 +87,7 @@
             </thead>
             <tbody>
                 {% for ip in ips %}
-                <tr>
+                <tr data-ip-id="{{ ip.id }}">
                     <td style="color:var(--muted);font-size:.78rem">{{ ip.id }}</td>
                     <td style="font-family:monospace;font-size:.82rem;white-space:nowrap">{{ ip.ip_address }}</td>
                     <td style="font-family:monospace;font-size:.75rem;color:var(--muted);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -91,9 +97,10 @@
                     <td>
                         <div class="waf-geo">
                             <span class="waf-geo-flag"></span>
-                            <span>{{ ip.country ?? 'Unknown' }}</span>
+                            <span data-geo-country>{{ ip.country ?? 'Unknown' }}</span>
                         </div>
-                        <div style="font-size:.73rem;color:var(--muted);margin-top:.1rem">{{ ip.isp ?? '' }}</div>
+                        <div data-geo-isp style="font-size:.73rem;color:var(--muted);margin-top:.1rem">{{ ip.isp ?? '' }}</div>
+                        <div data-geo-city style="font-size:.73rem;color:var(--muted)">{{ ip.city ?? '' }}</div>
                     </td>
                     <td>
                         {% set risk_class = ip.risk_score >= 13 ? 'waf-risk-high' : (ip.risk_score >= 6 ? 'waf-risk-medium' : 'waf-risk-low') %}
@@ -117,7 +124,7 @@
                             </span>
                         {% else %}—{% endif %}
                     </td>
-                    <td style="white-space:nowrap">
+                    <td style="white-space:nowrap;display:flex;flex-direction:column;gap:.3rem;align-items:flex-start">
                         {% if ip.is_banned %}
                         <form method="POST" action="/admin/waf/unban/{{ ip.id }}"
                               onsubmit="return confirm('¿Desbloquear {{ ip.ip_address }}?')">
@@ -128,6 +135,19 @@
                             </button>
                         </form>
                         {% endif %}
+                        <button type="button"
+                                class="btn-outline btn-sync-geo"
+                                data-id="{{ ip.id }}"
+                                title="Actualizar geolocalización desde ip-api.com"
+                                style="padding:.3rem .7rem;font-size:.78rem;color:#4f46e5;border-color:#c7d2fe">
+                            ↻ Geo
+                        </button>
+                        <a href="/admin/waf/attack-logs?ip={{ ip.ip_address|url_encode }}"
+                           class="btn-outline"
+                           title="Ver todos los ataques de esta IP"
+                           style="padding:.3rem .7rem;font-size:.78rem;color:#0369a1;border-color:#bae6fd;text-decoration:none">
+                            Ver ataques
+                        </a>
                     </td>
                 </tr>
                 {% endfor %}
@@ -159,4 +179,73 @@
 
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ csp_nonce }}">
+(function () {
+    const CSRF = '{{ csrf_token() }}';
+
+    async function syncGeo(btn) {
+        const id  = btn.dataset.id;
+        const row = btn.closest('tr');
+
+        // Estado: cargando
+        btn.disabled      = true;
+        btn.textContent   = '…';
+        btn.style.color   = '#6b7280';
+
+        try {
+            const res = await fetch('/admin/waf/sync-geo/' + id, {
+                method:  'POST',
+                headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }
+            });
+
+            const data = await res.json();
+            if (!data.ok) throw new Error(data.error ?? 'Error del servidor');
+
+            // Actualizar celdas sin recargar la página
+            const geo     = data.geo;
+            const country = row.querySelector('[data-geo-country]');
+            const isp     = row.querySelector('[data-geo-isp]');
+            const city    = row.querySelector('[data-geo-city]');
+
+            if (country) country.textContent = geo.country ?? '—';
+            if (isp)     isp.textContent     = geo.isp     ?? '';
+            if (city)    city.textContent    = geo.city    ?? '';
+
+            // Estado: éxito
+            btn.textContent       = '✓ Geo';
+            btn.style.color       = '#059669';
+            btn.style.borderColor = '#6ee7b7';
+
+            if (typeof window.toast === 'function') {
+                window.toast('Geo actualizada: ' + geo.country + ' — ' + geo.city, 'success');
+            }
+
+        } catch (err) {
+            btn.textContent       = '✗ Error';
+            btn.style.color       = '#be123c';
+            btn.style.borderColor = '#fecdd3';
+
+            if (typeof window.toast === 'function') {
+                window.toast('Error al sincronizar: ' + err.message, 'error');
+            }
+        } finally {
+            setTimeout(function () {
+                btn.disabled          = false;
+                btn.textContent       = '↻ Geo';
+                btn.style.color       = '#4f46e5';
+                btn.style.borderColor = '#c7d2fe';
+            }, 2500);
+        }
+    }
+
+    // Delegación de eventos — funciona con paginación dinámica
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.btn-sync-geo');
+        if (btn) syncGeo(btn);
+    });
+})();
+</script>
 {% endblock %}

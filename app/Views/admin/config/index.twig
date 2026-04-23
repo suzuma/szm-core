@@ -1,0 +1,165 @@
+{% extends 'layouts/app.twig' %}
+{% import 'components/alert.twig' as alert %}
+
+{% block title %}Configuración — {{ app_name }}{% endblock %}
+{% block page_title %}Configuración del sistema{% endblock %}
+
+{% block breadcrumbs %}
+<nav class="breadcrumbs" aria-label="Ruta de navegación">
+    <ol>
+        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+        <li class="breadcrumb-item breadcrumb-active">Configuración</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+
+{# ── Alertas ───────────────────────────────────────────────────────────── #}
+{{ alert.flash('success')|raw }}
+{{ alert.flash('error')|raw }}
+{{ alert.flash('info')|raw }}
+
+{# ── Alerta: .env no escribible ────────────────────────────────────────── #}
+{% if not writable %}
+<div class="alert alert-warning" role="alert">
+    <span class="alert-icon">⚠</span>
+    El archivo <code>.env</code> no tiene permisos de escritura. Los cambios no podrán guardarse
+    hasta que se corrija desde el servidor (<code>chmod 664 .env</code>).
+</div>
+{% endif %}
+
+{# ── Tabs de navegación ────────────────────────────────────────────────── #}
+{% set tab_labels = {
+    'general':       'General',
+    'session':       'Sesión',
+    'mail':          'Correo',
+    'waf':           'WAF',
+    'notifications': 'Notificaciones'
+} %}
+
+<nav class="waf-tabs" style="margin-bottom:1.25rem">
+    {% for tab_key, tab_label in tab_labels %}
+        <a href="/admin/config?tab={{ tab_key }}"
+           class="waf-tab {{ active_tab == tab_key ? 'active' : '' }}">
+            {{ tab_label }}
+        </a>
+    {% endfor %}
+</nav>
+
+{# ── Formulario principal ──────────────────────────────────────────────── #}
+<form method="POST" action="/admin/config" novalidate>
+    <input type="hidden" name="_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="tab"  value="{{ active_tab }}">
+
+    <div class="card">
+
+        {# ── Campos del tab activo ─────────────────────────────────────── #}
+        {% for field in tabs[active_tab] %}
+            {% set key   = field.key %}
+            {% set label = field.label %}
+            {% set type  = field.type %}
+            {% set value = config_input[key] ?? env[key] ?? '' %}
+            {% set has_error = config_errors[key] is defined %}
+
+            <div class="field" style="margin-bottom:1.25rem">
+                <label for="cfg-{{ key }}" style="display:flex;align-items:center;gap:.4rem;font-weight:500;margin-bottom:.35rem">
+                    {{ label }}
+                    {% if env[key] is defined and env[key]|length > 0 and type == 'password' %}
+                        <span title="Valor sensible" style="color:var(--muted);font-size:.75rem">🔒 sensible</span>
+                    {% endif %}
+                </label>
+
+                {# Select #}
+                {% if type == 'select' %}
+                    <select id="cfg-{{ key }}" name="{{ key }}" class="input {{ has_error ? 'input-error' : '' }}">
+                        {% for opt in field.options %}
+                            <option value="{{ opt }}" {{ value == opt ? 'selected' : '' }}>{{ opt }}</option>
+                        {% endfor %}
+                    </select>
+
+                {# Textarea #}
+                {% elseif type == 'textarea' %}
+                    <textarea id="cfg-{{ key }}" name="{{ key }}"
+                              class="input {{ has_error ? 'input-error' : '' }}"
+                              rows="3"
+                              placeholder="IPs separadas por coma: 10.0.0.1, 192.168.1.0/24"
+                              style="font-family:monospace;resize:vertical">{{ value }}</textarea>
+
+                {# Password — vacío por defecto, placeholder indica que no se modifica #}
+                {% elseif type == 'password' %}
+                    <input id="cfg-{{ key }}" name="{{ key }}" type="password"
+                           class="input {{ has_error ? 'input-error' : '' }}"
+                           placeholder="{{ (env[key] is defined and env[key]|length > 0) ? '(sin cambio — dejar vacío para conservar)' : '(vacío)' }}"
+                           autocomplete="new-password">
+
+                {# Number #}
+                {% elseif type == 'number' %}
+                    <input id="cfg-{{ key }}" name="{{ key }}" type="number"
+                           class="input {{ has_error ? 'input-error' : '' }}"
+                           value="{{ value }}"
+                           style="max-width:160px">
+
+                {# Email #}
+                {% elseif type == 'email' %}
+                    <input id="cfg-{{ key }}" name="{{ key }}" type="email"
+                           class="input {{ has_error ? 'input-error' : '' }}"
+                           value="{{ value }}"
+                           autocomplete="off">
+
+                {# Text (default) #}
+                {% else %}
+                    <input id="cfg-{{ key }}" name="{{ key }}" type="text"
+                           class="input {{ has_error ? 'input-error' : '' }}"
+                           value="{{ value }}"
+                           autocomplete="off">
+                {% endif %}
+
+                {# Mensaje de error de validación #}
+                {% if has_error %}
+                    <p class="field-error" style="margin-top:.3rem;font-size:.82rem;color:#dc2626">
+                        {{ config_errors[key] }}
+                    </p>
+                {% endif %}
+            </div>
+        {% endfor %}
+
+        {# ── Sección solo lectura (DB) — solo en tab general ──────────── #}
+        {% if active_tab == 'general' %}
+        <div style="margin-top:2rem;padding-top:1.25rem;border-top:1px solid var(--border)">
+            <p style="font-size:.8rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.75rem">
+                Base de datos — solo lectura
+                <span title="Editable solo desde el servidor" style="margin-left:.4rem">🔒</span>
+            </p>
+            <div style="display:flex;flex-wrap:wrap;gap:.6rem;align-items:center">
+                {% for key in readonly_keys %}
+                    {% if env[key] is defined %}
+                    <span style="display:inline-flex;align-items:center;gap:.35rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:.3rem .7rem;font-size:.82rem;font-family:monospace">
+                        <span style="color:var(--muted)">{{ key }}</span>
+                        <span>{{ env[key] }}</span>
+                    </span>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            <p style="margin-top:.6rem;font-size:.77rem;color:var(--muted)">
+                Editable solo desde el servidor. Cambiar credenciales de BD desde la web puede dejar la app inaccesible.
+            </p>
+        </div>
+        {% endif %}
+
+        {# ── Botón guardar ─────────────────────────────────────────────── #}
+        <div style="display:flex;justify-content:flex-end;margin-top:1.75rem;padding-top:1.25rem;border-top:1px solid var(--border)">
+            {% if active_tab == 'general' %}
+            <p style="flex:1;font-size:.8rem;color:var(--muted);align-self:center;margin:0">
+                ℹ Los cambios se aplican en la próxima petición al servidor.
+            </p>
+            {% endif %}
+            <button type="submit" class="btn" style="width:auto;padding:.65rem 1.5rem" {{ not writable ? 'disabled' : '' }}>
+                Guardar cambios
+            </button>
+        </div>
+    </div>
+
+</form>
+
+{% endblock %}

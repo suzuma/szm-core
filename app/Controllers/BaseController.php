@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use Core\Http\Request;
+use Core\Http\Response;
 use Core\ServicesContainer;
 use Twig\Environment;
 
@@ -12,6 +13,10 @@ use Twig\Environment;
  * BaseController
  *
  * Provee helpers de respuesta HTTP a todos los controladores.
+ * Internamente construye un Response y llama send() — esto centraliza
+ * toda la lógica de envío HTTP en la clase Response y elimina el
+ * patrón header()+exit disperso en los controladores.
+ *
  * No contiene lógica de negocio.
  */
 abstract class BaseController
@@ -46,33 +51,45 @@ abstract class BaseController
     /**
      * Redirige a una URL y termina la ejecución.
      *
-     * Ejemplo: return $this->redirect('/dashboard');
+     * Ejemplo: $this->redirect('/dashboard');
      */
     protected function redirect(string $url): never
     {
-        header('Location: ' . $url, true, 302);
-        exit;
+        Response::redirect($url)->send();
     }
 
     /**
-     * Redirige a la URL anterior (Referer) o a un fallback.
+     * Redirige a la URL anterior (Referer) o al fallback indicado.
+     * Valida que el Referer sea del mismo host para prevenir open redirect.
      */
     protected function back(string $fallback = '/'): never
     {
-        $this->redirect($_SERVER['HTTP_REFERER'] ?? $fallback);
+        $referer = $_SERVER['HTTP_REFERER'] ?? '';
+        $ownHost = $_SERVER['HTTP_HOST']    ?? '';
+        $url     = $fallback;
+
+        if ($referer !== '') {
+            $parsed  = parse_url($referer);
+            if ($parsed !== false) {
+                $refHost = $parsed['host'] ?? null;
+                // Aceptar: URL relativa (sin host) o mismo host
+                if ($refHost === null || $refHost === $ownHost) {
+                    $url = $referer;
+                }
+            }
+        }
+
+        Response::redirect($url)->send();
     }
 
     /**
      * Responde con JSON y termina la ejecución.
      *
-     * Ejemplo: return $this->json(['ok' => true]);
+     * Ejemplo: $this->json(['ok' => true]);
      */
     protected function json(mixed $data, int $status = 200): never
     {
-        http_response_code($status);
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        exit;
+        Response::json($data, $status)->send();
     }
 
     /**
@@ -81,10 +98,39 @@ abstract class BaseController
      */
     protected function abort(int $code, string $message = ''): never
     {
-        http_response_code($code);
         $template = "errors/{$code}.twig";
-        $viewPath = _APP_PATH_ . "Views/{$template}";
-        echo file_exists($viewPath) ? $this->view($template) : $message;
+        $viewPath  = _APP_PATH_ . "Views/{$template}";
+        $body      = file_exists($viewPath) ? $this->view($template) : $message;
+
+        Response::html($body, $code)->send();
+    }
+
+    /**
+     * Inicia una descarga de archivo (streaming).
+     *
+     * Envía los headers de descarga y luego ejecuta $writer, que debe
+     * escribir el contenido directamente a la salida (p. ej. con fputcsv
+     * sobre php://output). Termina la ejecución al finalizar.
+     *
+     * Ejemplo:
+     *   $this->download('reporte.csv', 'text/csv; charset=UTF-8', function () {
+     *       $out = fopen('php://output', 'w');
+     *       fputcsv($out, ['col1', 'col2']);
+     *       fclose($out);
+     *   });
+     *
+     * @param callable(): void $writer
+     */
+    protected function download(string $filename, string $mimeType, callable $writer): never
+    {
+        Response::make()
+            ->withHeader('Content-Type', $mimeType)
+            ->withHeader('Content-Disposition', 'attachment; filename="' . addslashes($filename) . '"')
+            ->withHeader('Cache-Control', 'no-cache, no-store')
+            ->withHeader('Pragma', 'no-cache')
+            ->sendHeaders();
+
+        $writer();
         exit;
     }
 }

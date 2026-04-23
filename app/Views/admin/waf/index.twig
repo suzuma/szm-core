@@ -32,6 +32,29 @@
     {{ stat.render('Regla más activa',   top_rule,      'sky')|raw }}
 </div>
 
+{# ── Deltas comparativos ───────────────────────────────────────────────────── #}
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-top:-.25rem;margin-bottom:.75rem">
+    {% macro delta(val, ref_label) %}
+        <div style="text-align:center;font-size:.72rem;padding:.25rem 0">
+            {% if val > 0 %}
+                <span style="color:#dc2626;font-weight:600">▲ {{ val }}%</span>
+                <span style="color:var(--muted)"> vs {{ ref_label }}</span>
+            {% elseif val < 0 %}
+                <span style="color:#16a34a;font-weight:600">▼ {{ val|abs }}%</span>
+                <span style="color:var(--muted)"> vs {{ ref_label }}</span>
+            {% else %}
+                <span style="color:var(--muted)">= igual que {{ ref_label }}</span>
+            {% endif %}
+        </div>
+    {% endmacro %}
+    {{ _self.delta(delta_today,  'ayer') }}
+    {{ _self.delta(delta_week,   'semana anterior') }}
+    {{ _self.delta(delta_banned, 'ayer') }}
+    <div style="text-align:center;font-size:.72rem;padding:.25rem 0;color:var(--muted)">
+        {{ unique_ips_week }} IPs únicas esta semana
+    </div>
+</div>
+
 {# ── Main two-column grid ──────────────────────────────────────────────────── #}
 <div style="display:grid;grid-template-columns:1fr 320px;gap:1rem;align-items:start">
 
@@ -162,9 +185,77 @@
             {% endif %}
         </div>
 
+        {# ── Top URIs atacadas ──────────────────────────────────────────── #}
+        <div class="card" style="padding:0;overflow:hidden">
+            <div style="padding:.875rem 1rem .5rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+                <h2 style="font-size:.9375rem;font-weight:600;color:var(--navy)">Endpoints más atacados</h2>
+                <span style="font-size:.75rem;color:var(--muted)">7 días</span>
+            </div>
+            {% if top_uris is empty %}
+                <div style="padding:1rem">{{ empty.render('Sin datos', 'No hay ataques registrados.')|raw }}</div>
+            {% else %}
+            <ul style="list-style:none;margin:0;padding:.5rem 0">
+                {% for u in top_uris %}
+                {% set pct = (u.total / uri_max * 100)|round %}
+                <li style="padding:.35rem 1rem;border-bottom:1px solid var(--border)">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.25rem">
+                        <code style="font-size:.75rem;color:var(--navy);word-break:break-all;max-width:80%">
+                            {{ u.uri|length > 60 ? u.uri|slice(0,60) ~ '…' : u.uri }}
+                        </code>
+                        <span style="font-size:.75rem;font-weight:600;color:var(--muted);white-space:nowrap;margin-left:.5rem">{{ u.total }}</span>
+                    </div>
+                    <div style="background:var(--border);border-radius:4px;height:4px">
+                        <div style="width:{{ pct }}%;height:100%;border-radius:4px;background:#f87171"></div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            <div style="padding:.5rem 1rem;text-align:right">
+                <a href="/admin/waf/attack-logs" style="font-size:.8rem">Ver logs →</a>
+            </div>
+            {% endif %}
+        </div>
+
     </div>{# /left column #}
 
-    {# ── Right column — Rule distribution ──────────────────────────────── #}
+    {# ── Right column ──────────────────────────────────────────────────── #}
+    <div style="display:flex;flex-direction:column;gap:1rem">
+
+    {# ── Efectividad del WAF ─────────────────────────────────────────── #}
+    <div class="card">
+        <h2 style="font-size:.9375rem;font-weight:600;color:var(--navy);margin-bottom:1rem">
+            Efectividad del WAF
+        </h2>
+        <div style="display:flex;flex-direction:column;gap:.75rem">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:.8125rem;color:var(--muted)">IPs únicas bloqueadas</span>
+                <strong style="font-size:.9rem;color:var(--navy)">{{ total_seen }}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:.8125rem;color:var(--muted)">Tasa de ban</span>
+                <span style="font-size:.9rem;font-weight:700;color:{% if ban_rate >= 70 %}#dc2626{% elseif ban_rate >= 40 %}#d97706{% else %}#16a34a{% endif %}">
+                    {{ ban_rate }}%
+                </span>
+            </div>
+            <div style="background:var(--border);border-radius:6px;height:8px">
+                <div style="width:{{ ban_rate }}%;height:100%;border-radius:6px;background:{% if ban_rate >= 70 %}#dc2626{% elseif ban_rate >= 40 %}#d97706{% else %}#16a34a{% endif %}"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.25rem">
+                <span style="font-size:.8125rem;color:var(--muted)">IPs únicas esta semana</span>
+                <strong style="font-size:.9rem;color:var(--navy)">{{ unique_ips_week }}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:.8125rem;color:var(--muted)">Ataques hoy vs ayer</span>
+                <span style="font-size:.8rem;font-weight:600;color:{% if delta_today > 0 %}#dc2626{% elseif delta_today < 0 %}#16a34a{% else %}var(--muted){% endif %}">
+                    {% if delta_today > 0 %}▲ +{{ delta_today }}%
+                    {% elseif delta_today < 0 %}▼ {{ delta_today }}%
+                    {% else %}sin cambio{% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    {# ── Rule distribution ───────────────────────────────────────────── #}
     <div class="card">
         <h2 style="font-size:.9375rem;font-weight:600;color:var(--navy);margin-bottom:1rem">
             Reglas disparadas <span style="font-weight:400;color:var(--muted);font-size:.8rem">(7 días)</span>
@@ -191,6 +282,8 @@
         </div>
         {% endif %}
     </div>
+
+    </div>{# /right column #}
 
 </div>{# /grid #}
 

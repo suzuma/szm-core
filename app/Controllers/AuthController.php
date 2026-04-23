@@ -11,7 +11,9 @@ use App\Http\Requests\LoginRequest;
 use App\Http\Requests\ResetRequest;
 use App\Services\AuthService;
 use Core\Auth\Auth;
+use Core\Http\Response;
 use Core\Security\CsrfToken;
+use Core\Security\LoginRateLimiter;
 
 /**
  * AuthController
@@ -54,6 +56,13 @@ final class AuthController extends BaseController
     {
         $this->validateCsrf();
 
+        $ip = filter_var($_SERVER['REMOTE_ADDR'] ?? '', FILTER_VALIDATE_IP) ?: '0.0.0.0';
+
+        if (LoginRateLimiter::tooManyAttempts($ip)) {
+            Flash::set('error', 'Demasiados intentos de acceso. Espera 15 minutos antes de volver a intentarlo.');
+            $this->back('/login');
+        }
+
         $form = LoginRequest::fromRequest();
 
         if ($form->fails()) {
@@ -69,6 +78,8 @@ final class AuthController extends BaseController
             Flash::set('error', $e->getMessage());
             $this->back('/login');
         }
+
+        LoginRateLimiter::clearAttempts($ip);
 
         if ($form->bool('remember_me')) {
             setcookie(session_name(), session_id(), time() + 30 * 86400, '/', '', false, true);
@@ -155,8 +166,7 @@ final class AuthController extends BaseController
 
     public function keepalive(): never
     {
-        http_response_code(204);
-        exit;
+        Response::make('', 204)->send();
     }
 
     // ── Helpers privados ───────────────────────────────────────────────────

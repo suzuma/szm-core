@@ -103,11 +103,14 @@ class User extends BaseModel
     /** Limpia bloqueo y registra IP + timestamp del login exitoso. */
     public function clearFailedAttempts(): void
     {
+        $raw = $_SERVER['REMOTE_ADDR'] ?? null;
+        $ip  = ($raw !== null && filter_var($raw, FILTER_VALIDATE_IP) !== false) ? $raw : null;
+
         $this->update([
             'failed_attempts' => 0,
             'locked_until'    => null,
             'last_login_at'   => Carbon::now(),
-            'last_login_ip'   => $_SERVER['REMOTE_ADDR'] ?? null,
+            'last_login_ip'   => $ip,
         ]);
     }
 

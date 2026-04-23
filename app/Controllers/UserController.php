@@ -95,7 +95,7 @@ class UserController extends BaseController
             'role_id'         => $form->int('role_id'),
             'name'            => $form->str('name'),
             'email'           => $form->str('email'),
-            'password'        => password_hash($form->str('password'), PASSWORD_BCRYPT, ['cost' => 12]),
+            'password'        => password_hash(substr($form->str('password'), 0, 72), PASSWORD_BCRYPT, ['cost' => 12]),
             'active'          => true,
             'failed_attempts' => 0,
         ]);
@@ -147,7 +147,7 @@ class UserController extends BaseController
             if (strlen($newPassword) < 8) {
                 $this->json(['ok' => false, 'errors' => ['password' => 'La contraseña debe tener al menos 8 caracteres.']], 422);
             }
-            $data['password'] = password_hash($newPassword, PASSWORD_BCRYPT, ['cost' => 12]);
+            $data['password'] = password_hash(substr($newPassword, 0, 72), PASSWORD_BCRYPT, ['cost' => 12]);
         }
 
         $user->update($data);

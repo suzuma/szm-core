@@ -8,6 +8,7 @@ use Core\Security\CsrfToken;
 use Core\Security\Session;
 use Core\Security\Waf\Identity\IpResolver;
 use Core\Security\Waf\Waf;
+use Core\Http\Response;
 use Core\Http\StaticFileHandler;
 use Core\Http\Router;
 use Core\Log;
@@ -240,7 +241,15 @@ final class Application
         }
 
         try {
-            echo $dispatcher->dispatch($method, $this->uri);
+            $result = $dispatcher->dispatch($method, $this->uri);
+
+            // Controladores pueden retornar Response (JSON, redirect, etc.)
+            // o un string (HTML de view). Ambos casos se manejan aquí.
+            if ($result instanceof Response) {
+                $result->send();
+            } elseif ($result !== null && $result !== '') {
+                echo $result;
+            }
         } catch (Throwable $e) {
             $this->handleDispatchError($e);
         }

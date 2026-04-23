@@ -1,0 +1,26 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+// ── CLI guard ─────────────────────────────────────────────────────────────────
+if (PHP_SAPI !== 'cli') {
+    fwrite(STDERR, "Este script solo puede ejecutarse desde la línea de comandos.\n");
+    exit(1);
+}
+
+// ── Autoloader ────────────────────────────────────────────────────────────────
+$autoload = dirname(__DIR__) . '/vendor/autoload.php';
+
+if (!file_exists($autoload)) {
+    fwrite(STDERR, "Autoloader no encontrado. Ejecuta: composer install\n");
+    exit(1);
+}
+
+require $autoload;
+
+// ── Ejecución ─────────────────────────────────────────────────────────────────
+use Core\Console\ConsoleApplication;
+
+$app = new ConsoleApplication(dirname(__DIR__));
+exit($app->run($argv));
