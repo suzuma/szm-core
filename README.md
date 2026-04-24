@@ -5,7 +5,7 @@ Un framework PHP minimalista y de alto rendimiento, diseñado para aplicaciones 
 ## Características principales
 
 - **WAF (Web Application Firewall)** — Detección de SQL injection, XSS, XXE, SSRF, path traversal, command injection, open redirect, bots IA, análisis de comportamiento, reputación de IP y mapa geográfico de amenazas.
-- **Autenticación y RBAC** — Sesiones seguras, roles y permisos, bloqueo por intentos fallidos, reset de contraseña, rate limiter de login.
+- **Autenticación y RBAC** — Sesiones seguras, roles y permisos, bloqueo por intentos fallidos, reset de contraseña, rate limiter de login, historial de contraseñas (previene reutilización de las últimas 5).
 - **CSRF Protection** — Token por petición con integración automática en Twig.
 - **Audit Log** — Registro de eventos de autenticación y operaciones CRUD con diff JSON.
 - **ORM Eloquent** — Query builder, relaciones y transacciones vía `illuminate/database`.
@@ -15,7 +15,11 @@ Un framework PHP minimalista y de alto rendimiento, diseñado para aplicaciones 
 - **Mail** — `MailerInterface` con `SmtpMailer` (PHPMailer) y `NullMailer` (log-only) intercambiables vía DI.
 - **Cache** — `CacheInterface` con drivers `ApcuCache`, `FileCache` y `NullCache`; fachada estática `Cache`.
 - **Storage** — `StorageInterface` con `LocalStorage`; fachada estática `Storage` para uploads seguros.
+- **Rate Limiter genérico** — `RateLimiter` basado en `CacheInterface`; clave arbitraria, max hits y ventana TTL configurables.
+- **Notificaciones Telegram** — `TelegramNotifier` para alertas de intrusión y eventos críticos en tiempo real.
+- **Health Check** — `GET /health` responde JSON con estado de DB, caché y storage; HTTP 200/503 para load balancers y monitoreo.
 - **CLI** — `bin/szm` con generadores de código (`make:controller`, `make:model`, `make:migration`, `make:request`, `make:seeder`, `make:event`) y runner de migraciones.
+- **Query Debug Panel** — Panel flotante en el layout con todas las queries SQL ejecutadas (timing, bindings); solo visible en `APP_ENV=dev`.
 - **Dark mode** — Toggle claro/oscuro persistido en `localStorage`; respeta `prefers-color-scheme` del SO.
 
 ## Tech Stack
@@ -43,7 +47,6 @@ Un framework PHP minimalista y de alto rendimiento, diseñado para aplicaciones 
 - Composer
 - Apache con `mod_rewrite` (producción) o PHP built-in server (desarrollo)
 - APCu (opcional — mejora el rendimiento del WAF y del rate limiter)
-- Redis (opcional — caché distribuida para entornos multi-servidor)
 
 ### Pasos
 
@@ -159,10 +162,6 @@ MAIL_FROM_NAME=SZM
 MAIL_ENCRYPTION=tls      # tls | ssl | (vacío = sin cifrado)
 MAIL_DEBUG=false         # true = debug SMTP en consola (solo dev)
 
-# Redis (opcional — sin esto el WAF opera en modo MySQL puro)
-REDIS_HOST=
-REDIS_PORT=6379
-
 # Telegram (opcional — notificaciones de intrusión en tiempo real)
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
@@ -174,16 +173,16 @@ TELEGRAM_CHAT_ID=
 szm-core/
 ├── app/
 │   ├── Controllers/        # Manejadores HTTP
-│   │   └── Admin/          # DashboardController, UserController, WafController, ConfigController, AuditLogController
+│   │   └── Admin/          # WafController, UserController, ConfigController, AuditController
 │   ├── Http/
 │   │   └── Requests/       # FormRequests declarativos (Login, Forgot, Reset, StoreUser, UpdateUser)
-│   ├── Models/             # Modelos Eloquent (User, Role, Permission, AuditLog)
-│   ├── Services/           # Lógica de negocio (AuthService, LoginRateLimiter)
-│   ├── Events/             # Eventos de dominio (UserLoggedIn, PasswordResetRequested)
-│   ├── Helpers/            # Funciones auxiliares (Flash, OldInput)
+│   ├── Models/             # Eloquent: User, Role, Permission, AuditLog, PasswordHistory
+│   ├── Services/           # AuthService
+│   ├── Events/             # UserLoggedIn, PasswordResetRequested
+│   ├── Helpers/            # Flash, OldInput
 │   ├── Views/
-│   │   ├── layouts/        # app.twig, auth.twig
-│   │   ├── components/     # modal.twig, pagination.twig, alert.twig, stat_card.twig, empty_state.twig
+│   │   ├── layouts/        # app.twig (+ query debug panel), auth.twig
+│   │   ├── components/     # modal.twig, pagination.twig, stat_card.twig, empty_state.twig
 │   │   ├── admin/          # Vistas de panel (users, waf, audit-log, config)
 │   │   └── auth/           # login, forgot-password, reset-password
 │   ├── routes/web.php      # Definición de rutas
@@ -193,10 +192,13 @@ szm-core/
 ├── core/
 │   ├── Bootstrap/          # Application, ExceptionHandler
 │   ├── Console/            # ConsoleApplication, CommandInterface, Commands/
+│   ├── Notifications/      # TelegramNotifier
 │   ├── Security/
 │   │   ├── Session.php
 │   │   ├── CsrfToken.php
-│   │   └── Waf/            # WAF (detección, comportamiento, identidad, HTTP, geo)
+│   │   ├── LoginRateLimiter.php
+│   │   ├── RateLimiter.php  # Rate limiter genérico basado en CacheInterface
+│   │   └── Waf/             # WAF (detección, comportamiento, identidad, HTTP, geo)
 │   ├── Auth/               # Fachada de autenticación
 │   ├── Cache/              # CacheInterface, ApcuCache, FileCache, NullCache, Cache (fachada)
 │   ├── Config/             # EnvWriter (edición atómica de .env)
@@ -212,11 +214,19 @@ szm-core/
 │
 ├── database/
 │   ├── migrate.php         # Runner de migraciones
-│   ├── migrations/         # 9 archivos SQL (RBAC + WAF + geo)
+│   ├── migrations/         # 10 archivos SQL (RBAC + WAF + geo + password history)
 │   └── seeds/              # Datos iniciales (admin user)
 │
 ├── tests/
-│   └── Waf/                # Suite completa de tests del WAF (222 tests)
+│   ├── Support/
+│   │   └── FakeCache.php   # CacheInterface in-memory para tests
+│   ├── Http/
+│   │   ├── ResponseTest.php
+│   │   └── Requests/
+│   │       └── LoginRequestTest.php
+│   ├── Security/
+│   │   └── RateLimiterTest.php
+│   └── Waf/                # Suite WAF (247 tests)
 │       ├── Detection/      # SQL injection, XSS, XXE, SSRF, path traversal, etc.
 │       ├── Normalize/      # Normalización anti-bypass
 │       ├── Identity/       # Resolución de IP
@@ -230,33 +240,36 @@ szm-core/
 ├── storage/                # Logs, caché Twig, uploads
 ├── index.php               # Front controller
 ├── config.php              # Configuración de la aplicación
+├── CHANGELOG.md            # Historial de cambios (Keep a Changelog)
 └── .env.example            # Plantilla de variables de entorno
 ```
 
 ## Rutas disponibles
 
-| Método | URI | Descripción |
-|---|---|---|
-| GET/POST | `/login` | Autenticación |
-| GET/POST | `/forgot-password` | Recuperación de contraseña |
-| GET/POST | `/reset-password/{token}` | Reset de contraseña |
-| POST | `/logout` | Cerrar sesión |
-| GET | `/session-keepalive` | Extiende la sesión (AJAX) |
-| GET | `/` | Dashboard (requiere auth) |
-| GET/POST | `/admin/users` | CRUD de usuarios (admin) |
-| PUT | `/admin/users/{id}` | Actualizar usuario (admin) |
-| PATCH | `/admin/users/{id}/toggle` | Activar/desactivar usuario (admin) |
-| DELETE | `/admin/users/{id}` | Eliminar usuario (admin) |
-| GET | `/admin/waf` | Dashboard WAF (admin) |
-| GET | `/admin/waf/blocked-ips` | IPs bloqueadas (admin) |
-| GET | `/admin/waf/attack-logs` | Logs de ataques (admin) |
-| POST | `/admin/waf/unban/{id}` | Desbloquear IP (admin) |
-| GET | `/admin/waf/geo-map` | Mapa geográfico de amenazas (admin) |
-| POST | `/admin/waf/sync-geo/{id}` | Sincronizar geolocalización por IP (admin) |
-| GET | `/admin/waf/export-ips` | Exportar IPs bloqueadas a CSV (admin) |
-| GET | `/admin/waf/export-logs` | Exportar logs de ataques a CSV (admin) |
-| GET | `/admin/audit-log` | Registro de auditoría (admin) |
-| GET/POST | `/admin/config` | Configuración del sistema vía UI (admin) |
+| Método | URI | Auth | Descripción |
+|---|---|---|---|
+| GET | `/health` | No | Estado de DB, caché y storage (JSON) |
+| GET/POST | `/login` | Guest | Autenticación |
+| GET/POST | `/forgot-password` | Guest | Solicitar reset de contraseña |
+| GET/POST | `/reset-password/{token}` | Guest | Aplicar nueva contraseña |
+| POST | `/logout` | Auth | Cerrar sesión |
+| GET | `/session-keepalive` | Auth | Extender sesión (AJAX) |
+| GET | `/` | Auth | Dashboard |
+| GET | `/admin/users` | Admin | Listado de usuarios |
+| POST | `/admin/users` | Admin | Crear usuario |
+| PUT | `/admin/users/{id}` | Admin | Actualizar usuario |
+| PATCH | `/admin/users/{id}/toggle` | Admin | Activar/desactivar usuario |
+| DELETE | `/admin/users/{id}` | Admin | Eliminar usuario |
+| GET | `/admin/waf` | Admin | Dashboard WAF |
+| GET | `/admin/waf/blocked-ips` | Admin | IPs bloqueadas |
+| GET | `/admin/waf/attack-logs` | Admin | Logs de ataques |
+| POST | `/admin/waf/unban/{id}` | Admin | Desbloquear IP |
+| GET | `/admin/waf/geo-map` | Admin | Mapa geográfico de amenazas |
+| POST | `/admin/waf/sync-geo/{id}` | Admin | Sincronizar geolocalización por IP |
+| GET | `/admin/waf/export/attack-logs` | Admin | Exportar logs a CSV |
+| GET | `/admin/waf/export/blocked-ips` | Admin | Exportar IPs bloqueadas a CSV |
+| GET | `/admin/audit-log` | Admin | Registro de auditoría |
+| GET/POST | `/admin/config` | Admin | Configuración del sistema vía UI |
 
 ## Tests
 
@@ -266,12 +279,26 @@ composer test
 
 # Suite específica
 vendor/bin/phpunit --testsuite "WAF — Detección de ataques"
+vendor/bin/phpunit --testsuite "HTTP — Response y Requests"
+vendor/bin/phpunit --testsuite "Security — RateLimiter"
 
 # Con reporte de cobertura HTML
 vendor/bin/phpunit --coverage-html coverage/
 ```
 
-Suites disponibles: `WAF — Detección de ataques`, `WAF — Normalización anti-bypass`, `WAF — Identidad / IP`, `WAF — Configuración`.
+Suites disponibles:
+
+| Suite | Tests |
+|---|---|
+| WAF — Detección de ataques | SQL injection, XSS, XXE, SSRF, path traversal, command injection, open redirect |
+| WAF — Normalización anti-bypass | Decodificación URL, hex, unicode, case folding |
+| WAF — Identidad / IP | Resolución de IP real detrás de proxies |
+| WAF — Configuración | Invariantes de configuración del WAF |
+| Config — EnvWriter | Lectura y escritura atómica de variables de entorno |
+| HTTP — Response y Requests | `Response` value object, `LoginRequest` validación |
+| Security — RateLimiter | `RateLimiter` genérico con caché fake |
+
+**Total: 291 tests, 368 assertions**
 
 ## Herramientas de desarrollo
 

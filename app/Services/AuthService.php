@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Events\PasswordResetRequested;
 use App\Events\UserLoggedIn;
+use App\Models\PasswordHistory;
 use App\Models\User;
 use Core\Auth\Auth;
 use Core\Events\EventDispatcher;
@@ -106,6 +107,14 @@ class AuthService
         if ($user === null || !$user->isValidResetToken($token)) {
             throw new \RuntimeException('El enlace de recuperación es inválido o ha expirado.');
         }
+
+        // Verificar que la nueva contraseña no repita ninguna de las últimas 5
+        if (PasswordHistory::matchesRecent($user->id, substr($password, 0, 72), last: 5)) {
+            throw new \RuntimeException('La nueva contraseña no puede ser igual a alguna de las últimas 5 contraseñas utilizadas.');
+        }
+
+        // Guardar el hash actual en el historial antes de reemplazarlo
+        PasswordHistory::record($user->id, $user->password);
 
         // BCrypt procesa solo los primeros 72 bytes; se trunca explícitamente
         // para que contraseñas largas no den falsa sensación de seguridad.

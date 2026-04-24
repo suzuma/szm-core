@@ -6,6 +6,7 @@ use App\Controllers\Admin\AuditController;
 use App\Controllers\Admin\ConfigController;
 use App\Controllers\Admin\WafController;
 use App\Controllers\AuthController;
+use App\Controllers\HealthController;
 use App\Controllers\HomeController;
 use App\Controllers\UserController;
 use Phroute\Phroute\Route;
@@ -29,6 +30,9 @@ use Phroute\Phroute\Route;
  *       $router->get('/perfil', [PerfilController::class, 'index']);
  *   });
  */
+
+// ── Health check — sin autenticación (para load balancers y monitoreo) ────
+$router->get('/health', [HealthController::class, 'check']);
 
 // ── Autenticación (solo para no autenticados) ──────────────────────────────
 $router->group([Route::BEFORE => 'guest'], function ($router): void {

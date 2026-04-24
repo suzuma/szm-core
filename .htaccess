@@ -1,60 +1,81 @@
-#RewriteEngine On
-#RewriteBase /
+# ==============================================================================
+# SZM-Core — Apache configuration
+# ==============================================================================
 
-# Proteger carpetas sensibles
-#RewriteRule ^(app|core|vendor|views)/ - [F,L]
-
-# Si existe archivo real, cargarlo
-#RewriteCond %{REQUEST_FILENAME} -f [OR]
-#RewriteCond %{REQUEST_FILENAME} -d
-#RewriteRule ^ - [L]
-
-# Todo lo demás al front controller
-#RewriteRule ^ index.php [QSA,L]
-
-
-# ----------------------------------------------------------------------
-# 1. CONFIGURACIÓN BÁSICA Y RUTAS
-# ----------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# 1. ROUTING — Front controller
+# ------------------------------------------------------------------------------
 RewriteEngine On
 RewriteBase /
 
-# Proteger directorios sensibles — ninguno de estos debe ser accesible via HTTP
-RewriteRule ^(app|core|vendor|views|database|storage|tests|backup_waf)/ - [F,L]
+# Bloquear acceso HTTP a directorios que nunca deben ser públicos
+RewriteRule ^(app|core|bin|vendor|database|storage|tests|backup_waf)(/|$) - [F,L]
 
-# Si existe archivo o directorio real, cargarlo directamente
-# NOTA: el bloqueo de FilesMatch (sección 3) aplica antes que esta regla en Apache,
-#       así que .env y dotfiles nunca llegan aquí aunque existan físicamente.
+# Servir archivos y directorios reales directamente (CSS, JS, imágenes, etc.)
+# Nota: FilesMatch de la sección 3 evalúa antes, así que dotfiles/configs
+# nunca llegan aquí aunque existan físicamente.
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# Todo lo demás al front controller (index.php)
+# Todo lo demás al front controller
 RewriteRule ^ index.php [QSA,L]
 
-# ----------------------------------------------------------------------
-# 2. SEGURIDAD DE CABECERAS (Corrige los errores de Nikto)
-# ----------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# 2. CABECERAS DE SEGURIDAD
+# ------------------------------------------------------------------------------
 <IfModule mod_headers.c>
-    # Evita que el navegador adivine el tipo de archivo (MIME Sniffing)
+    # Previene MIME sniffing — el navegador no adivina el Content-Type
     Header set X-Content-Type-Options "nosniff"
 
-    # Previene que tu sitio sea puesto en un iframe (Evita Clickjacking)
+    # Evita que el sitio sea embebido en iframes de otros dominios (clickjacking)
     Header set X-Frame-Options "SAMEORIGIN"
 
-    # Controla cuánta info de la URL se envía a otros sitios
+    # Controla cuánta información de la URL se envía como Referer
     Header set Referrer-Policy "strict-origin-when-cross-origin"
 
-    # HSTS: Fuerza el uso de HTTPS (Activar solo si tienes SSL configurado)
-    # Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    # Restringe acceso a APIs del navegador innecesarias para esta aplicación
+    Header set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
 
-    # Desactiva la filtración de información de LiteSpeed/Apache
+    # Aísla el contexto de navegación para mitigar Spectre/cross-origin leaks
+    Header set Cross-Origin-Opener-Policy "same-origin"
+
+    # HSTS — fuerza HTTPS durante 1 año (activar solo si SSL está configurado)
+    # Header set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+    # Ocultar información del servidor
     Header unset X-Powered-By
+    Header unset Server
 </IfModule>
 
-# ----------------------------------------------------------------------
-# 3. PROTECCIÓN DE ARCHIVOS CRÍTICOS
-# ----------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# 3. CACHÉ DE ASSETS ESTÁTICOS
+# ------------------------------------------------------------------------------
+<IfModule mod_expires.c>
+    ExpiresActive On
+
+    # Imágenes — 30 días
+    ExpiresByType image/png             "access plus 30 days"
+    ExpiresByType image/jpeg            "access plus 30 days"
+    ExpiresByType image/gif             "access plus 30 days"
+    ExpiresByType image/svg+xml         "access plus 30 days"
+    ExpiresByType image/webp            "access plus 30 days"
+    ExpiresByType image/x-icon          "access plus 30 days"
+
+    # Fuentes — 30 días
+    ExpiresByType font/woff             "access plus 30 days"
+    ExpiresByType font/woff2            "access plus 30 days"
+    ExpiresByType application/font-woff "access plus 30 days"
+
+    # CSS y JS — 7 días (versionar archivos en producción para cache busting)
+    ExpiresByType text/css              "access plus 7 days"
+    ExpiresByType application/javascript "access plus 7 days"
+    ExpiresByType text/javascript       "access plus 7 days"
+</IfModule>
+
+# ------------------------------------------------------------------------------
+# 4. PROTECCIÓN DE ARCHIVOS CRÍTICOS
+# ------------------------------------------------------------------------------
 
 # Bloquear TODOS los dotfiles: .env, .env.local, .git, .gitignore,
 # .htpasswd, .ssh, .idea, .vscode, etc.
@@ -63,20 +84,27 @@ RewriteRule ^ index.php [QSA,L]
     Deny from all
 </FilesMatch>
 
-# Bloquear extensiones de configuración y datos sensibles
-<FilesMatch "\.(env|sql|log|bak|config|lock|sh|bash|key|pem|pfx|p12)$">
+# Bloquear extensiones de configuración, datos y credenciales
+<FilesMatch "\.(env|sql|log|bak|config|lock|sh|bash|key|pem|pfx|p12|neon|xml)$">
     Order deny,allow
     Deny from all
 </FilesMatch>
 
 # Bloquear archivos de configuración por nombre exacto
-<FilesMatch "^(composer\.json|composer\.lock|package\.json|package-lock\.json|webpack\.config\.js|vite\.config\.js|dockerfile|docker-compose\.yml|phpunit\.xml)$">
+<FilesMatch "^(composer\.json|composer\.lock|package\.json|package-lock\.json|webpack\.config\.js|vite\.config\.js|dockerfile|docker-compose\.yml|phpunit\.xml|phpstan\.neon|CHANGELOG\.md)$">
     Order deny,allow
     Deny from all
 </FilesMatch>
 
-# Desactiva los ETags para evitar fuga de Inodos (Fallo CVE-2003-1418)
+# ------------------------------------------------------------------------------
+# 5. MISCELÁNEA
+# ------------------------------------------------------------------------------
+
+# Eliminar ETags — evita fuga de inodos (CVE-2003-1418)
 FileETag None
 
-# Desactiva el listado de directorios (Si no hay index.php, no muestra los archivos)
+# Deshabilitar listado de directorios
 Options -Indexes
+
+# Deshabilitar ejecución de CGI en directorios públicos (si aplica)
+Options -ExecCGI

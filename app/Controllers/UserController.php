@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Models\AuditLog;
+use App\Models\PasswordHistory;
 use App\Models\Role;
 use App\Models\User;
 use Core\Auth\Auth;
@@ -147,6 +148,10 @@ class UserController extends BaseController
             if (strlen($newPassword) < 8) {
                 $this->json(['ok' => false, 'errors' => ['password' => 'La contraseña debe tener al menos 8 caracteres.']], 422);
             }
+            if (PasswordHistory::matchesRecent($user->id, substr($newPassword, 0, 72), last: 5)) {
+                $this->json(['ok' => false, 'errors' => ['password' => 'La nueva contraseña no puede ser igual a alguna de las últimas 5 contraseñas.']], 422);
+            }
+            PasswordHistory::record($user->id, $user->password);
             $data['password'] = password_hash(substr($newPassword, 0, 72), PASSWORD_BCRYPT, ['cost' => 12]);
         }
 

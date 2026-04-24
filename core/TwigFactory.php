@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Core;
 
+use Core\Database\DbContext;
 use Core\Security\CsrfToken;
 use App\Helpers\Flash;
 use App\Helpers\OldInput;
@@ -59,7 +60,13 @@ final class TwigFactory
             return rtrim(_BASE_HTTP_, '/') . '/' . ltrim($path, '/');
         }));
 
+        // Queries SQL ejecutadas en la petición actual (solo disponible en dev)
+        $twig->addFunction(new TwigFunction('debug_queries', function (): array {
+            return DbContext::getQueryLog();
+        }));
+
         // Variables globales disponibles en todas las plantillas
+        $twig->addGlobal('app_env',        $environment);
         $twig->addGlobal('app_name',       _EMPRESA_);
         $twig->addGlobal('base_url',       _BASE_HTTP_);
         $twig->addGlobal('auth_role',      $_SESSION['user_role'] ?? 'guest');

@@ -3,5 +3,5 @@
 -- Columnas nullable: registros previos quedan con NULL (se muestran sin pin).
 
 ALTER TABLE waf_blocked_ips_szm
-    ADD COLUMN latitude  DECIMAL(10, 7) NULL DEFAULT NULL AFTER isp,
-    ADD COLUMN longitude DECIMAL(10, 7) NULL DEFAULT NULL AFTER latitude;
+    ADD COLUMN IF NOT EXISTS latitude  DECIMAL(10, 7) NULL DEFAULT NULL AFTER isp,
+    ADD COLUMN IF NOT EXISTS longitude DECIMAL(10, 7) NULL DEFAULT NULL AFTER latitude;

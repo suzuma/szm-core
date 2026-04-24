@@ -23,12 +23,21 @@
         <testsuite name="Config — EnvWriter">
             <directory>tests/Config</directory>
         </testsuite>
+        <testsuite name="HTTP — Response y Requests">
+            <directory>tests/Http</directory>
+        </testsuite>
+        <testsuite name="Security — RateLimiter">
+            <directory>tests/Security</directory>
+        </testsuite>
     </testsuites>
 
     <source>
         <include>
             <directory>core/Security/Waf</directory>
             <directory>core/Config</directory>
+            <directory>core/Http</directory>
+            <directory>core/Security</directory>
+            <directory>app/Http</directory>
         </include>
     </source>
 
